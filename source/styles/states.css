@@ -1,0 +1,34 @@
+.ye-file-input {
+    display: none;
+}
+
+.ye.ye--drop .ye-area {
+    outline: 2px dashed var(--ye-accent);
+    outline-offset: -5px;
+    background: var(--ye-accent-soft);
+}
+
+.ye.ye--busy .ye-area {
+    opacity: .6;
+    pointer-events: none;
+}
+
+.ye.ye--busy .ye-count {
+    color: var(--ye-accent);
+}
+
+.ye.ye--full {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    border-radius: 0;
+    max-height: none;
+}
+
+.ye.ye--full .ye-area {
+    max-height: none;
+}
+
+body.ye-lock {
+    overflow: hidden;
+}

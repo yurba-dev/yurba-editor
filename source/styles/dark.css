@@ -1,0 +1,31 @@
+@media (prefers-color-scheme: dark) {
+    .ye:not(.ye--light) {
+        --ye-surface: #1e1f24;
+        --ye-surface-2: #26272e;
+        --ye-border: #34363f;
+        --ye-border-strong: #434654;
+        --ye-text: #e5e7eb;
+        --ye-text-soft: #cbd0d8;
+        --ye-muted: #9096a1;
+        --ye-accent: #60a5fa;
+        --ye-accent-ink: #93c5fd;
+        --ye-accent-soft: #1e3a5f;
+        --ye-danger: #f87171;
+        --ye-danger-soft: #3a1e1e;
+    }
+}
+
+.ye.ye--dark {
+    --ye-surface: #1e1f24;
+    --ye-surface-2: #26272e;
+    --ye-border: #34363f;
+    --ye-border-strong: #434654;
+    --ye-text: #e5e7eb;
+    --ye-text-soft: #cbd0d8;
+    --ye-muted: #9096a1;
+    --ye-accent: #60a5fa;
+    --ye-accent-ink: #93c5fd;
+    --ye-accent-soft: #1e3a5f;
+    --ye-danger: #f87171;
+    --ye-danger-soft: #3a1e1e;
+}

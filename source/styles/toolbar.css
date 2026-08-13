@@ -1,0 +1,120 @@
+/* Toolbar */
+
+.ye-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1px;
+    padding: 6px;
+    background: var(--ye-surface-2);
+    border-bottom: 1px solid var(--ye-border);
+    border-radius: var(--ye-radius) var(--ye-radius) 0 0;
+}
+
+.ye-toolbar__sep {
+    width: 1px;
+    align-self: stretch;
+    margin: 3px 4px;
+    background: var(--ye-border);
+}
+
+.ye-toolbar__btn {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--ye-text-soft);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: .15s;
+}
+
+.ye-toolbar__btn:hover {
+    background: var(--ye-surface);
+    border-color: var(--ye-border-strong);
+    color: var(--ye-text);
+}
+
+.ye-toolbar__btn.is-active {
+    background: var(--ye-accent-soft);
+    border-color: var(--ye-accent-soft);
+    color: var(--ye-accent-ink);
+}
+
+.ye-toolbar__btn:disabled,
+.ye-toolbar__btn.is-disabled {
+    opacity: .4;
+    cursor: default;
+    pointer-events: none;
+}
+
+.ye-toolbar__btn--bold {
+    font-weight: 800;
+}
+
+.ye-toolbar__btn--italic {
+    font-style: italic;
+}
+
+.ye-toolbar__btn--underline:not(:has(*)) {
+    text-decoration: underline;
+}
+
+.ye-toolbar__btn--strike:not(:has(*)) {
+    text-decoration: line-through;
+}
+
+.ye-toolbar__btn--wide {
+    min-width: 118px;
+    padding: 0 10px;
+    gap: 6px;
+    justify-content: space-between;
+}
+
+.ye-toolbar__btn--fore {
+    border-bottom: 3px solid var(--ye-accent);
+    font-weight: 800;
+}
+
+.ye-toolbar__btn--back {
+    background: #fef08a;
+    color: #713f12;
+    font-weight: 800;
+}
+
+/* Icons */
+
+.ye-caret {
+    font-size: 10px;
+    opacity: .6;
+}
+
+.ye-ico {
+    font-size: 18px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+svg.ye-ico {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    font-size: 0;
+}

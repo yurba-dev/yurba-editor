@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YurbaEditor — Documentation</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+    <link rel="stylesheet" href="dist/yurba-editor.css">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<div class="header">
+    <div class="header-inner">
+        <h1>YurbaEditor</h1>
+    </div>
+</div>
+
+<div class="layout">
+
+    <nav class="sidebar">
+        <div class="sidebar-group">
+            <div class="sidebar-group-title">Getting started</div>
+            <a href="#usage">Usage</a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-title">Demo</div>
+            <a href="#demo">Live demo</a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-title">API</div>
+            <a href="#constructor">Creating an editor</a>
+            <a href="#options">Options</a>
+            <a href="#methods">Methods</a>
+            <a href="#events">Events</a>
+            <a href="#static">Static</a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-title">Reference</div>
+            <a href="#tokens">Toolbar tokens</a>
+            <a href="#context-menu">Context menu</a>
+            <a href="#upload">Image upload</a>
+            <a href="#theming">Theming</a>
+            <a href="#security">Security</a>
+        </div>
+    </nav>
+
+    <main>
+
+        <section id="usage">
+            <div class="doc-header">
+                <h2 class="doc-component-name">YurbaEditor</h2>
+                <p class="doc-component-desc">A full-featured lightweight WYSIWYG editor in a single dependency-free file — rich text in, clean allowlist-sanitized HTML out.</p>
+            </div>
+
+            <div class="doc-section">
+                <div class="doc-section-title">Usage</div>
+                <div class="gap-stack">
+                    <div class="code-block">
+                        <pre><code class="language-html">&lt;link rel="stylesheet" href="/dist/yurba-editor.min.css"&gt;
+&lt;script src="/dist/yurba-editor.min.js"&gt;&lt;/script&gt;</code></pre>
+                    </div>
+                    <p class="note">Point it at a <code>&lt;textarea&gt;</code> — the library hides it and keeps its value in sync, so the form submits HTML normally.</p>
+                    <div class="code-block">
+                        <pre><code class="language-html">&lt;form&gt;
+  &lt;textarea name="body"&gt;&lt;p&gt;Hello&lt;/p&gt;&lt;/textarea&gt;
+&lt;/form&gt;</code></pre>
+                    </div>
+                    <div class="code-block">
+                        <pre><code class="language-javascript">YurbaEditor.create({ field: 'textarea[name=body]' })</code></pre>
+                    </div>
+                    <p class="note">Or mount it standalone — it is a custom element, so you can also write <code>&lt;yurba-editor&gt;&lt;/yurba-editor&gt;</code> directly and any inner markup becomes the initial value.</p>
+                    <div class="code-block">
+                        <pre><code class="language-javascript">const editor = YurbaEditor.create({ mount: '#editor', value: '&lt;p&gt;Start here&lt;/p&gt;' })
+console.log(editor.getHTML())</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="demo">
+            <div class="doc-header">
+                <h2 class="doc-component-name">Live demo</h2>
+                <p class="doc-component-desc">Everything you type is sanitized and mirrored below as it would be stored.</p>
+            </div>
+
+            <div class="doc-section">
+                <div class="doc-section-title">Full editor</div>
+                <label class="theme-toggle demo-theme-toggle"><input type="checkbox" id="dark"> Dark editor</label>
+                <div class="demo-card">
+                    <form id="form">
+                        <textarea id="demo-body" name="body">&lt;h2&gt;Welcome to YurbaEditor&lt;/h2&gt;&lt;p&gt;A &lt;b&gt;small&lt;/b&gt;, &lt;i&gt;fast&lt;/i&gt; editor with &lt;a href="https://yurba.one"&gt;links&lt;/a&gt;, lists, tables and more.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Type &lt;code&gt;## &lt;/code&gt; for a heading&lt;/li&gt;&lt;li&gt;Pick a custom color by hex&lt;/li&gt;&lt;/ul&gt;</textarea>
+                    </form>
+                </div>
+            </div>
+
+            <div class="doc-section">
+                <div class="doc-section-title">Stored value — getHTML()</div>
+                <pre class="demo-out" id="demo-out"></pre>
+            </div>
+
+            <div class="doc-section">
+                <div class="doc-section-title">Compact toolbar</div>
+                <div class="demo-card">
+                    <textarea id="demo-compact"></textarea>
+                </div>
+            </div>
+
+            <div class="doc-section">
+                <div class="doc-section-title">Bare input — no toolbar / footer</div>
+                <div class="demo-card">
+                    <textarea id="demo-bare"></textarea>
+                </div>
+                <p class="note">A drop-in for a <code>contenteditable</code> input: <code>toolbar: false, footer: false, inline: true</code> — Enter is a line break, no block paragraphs. Formatting via right-click menu and shortcuts (<code>Ctrl/⌘+B/I/U</code>).</p>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="constructor">
+            <div class="doc-header">
+                <h2 class="doc-component-name">Creating an editor</h2>
+                <p class="doc-component-desc"><code>YurbaEditor</code> is a custom element (<code>&lt;yurba-editor&gt;</code>). Create one with the factory and it returns the element. Pass <code>field</code> to sync a form control, or <code>mount</code> to place it in a container.</p>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">Signature</div>
+                <div class="code-block">
+                    <pre><code class="language-javascript">const editor = YurbaEditor.create(options?)</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="options">
+            <div class="doc-section">
+                <div class="doc-section-title">Options</div>
+                <table class="api-table">
+                    <thead>
+                        <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>field</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string | Element</span></td>
+                            <td><code>—</code></td>
+                            <td>A <code>&lt;textarea&gt;</code>/<code>&lt;input&gt;</code> to hide and keep in sync. The editor is inserted right after it.</td>
+                        </tr>
+                        <tr>
+                            <td><code>mount</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string | Element</span></td>
+                            <td><code>—</code></td>
+                            <td>Container to append the editor into. Omit both to get a detached element you place yourself.</td>
+                        </tr>
+                        <tr>
+                            <td><code>toolbar</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string[] | false</span></td>
+                            <td><code>full set</code></td>
+                            <td>Toolbar tokens (see reference); <code>'|'</code> is a separator. <code>false</code> hides the toolbar entirely.</td>
+                        </tr>
+                        <tr>
+                            <td><code>footer</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">boolean</span></td>
+                            <td><code>true</code></td>
+                            <td><code>false</code> hides the footer (brand link + word/char count).</td>
+                        </tr>
+                        <tr>
+                            <td><code>inline</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">boolean</span></td>
+                            <td><code>false</code></td>
+                            <td>Inline mode: Enter inserts <code>&lt;br&gt;</code>, blocks (headings/lists/quotes/tables) are flattened, and markdown/block shortcuts are off — the value stays one flow of text.</td>
+                        </tr>
+                        <tr>
+                            <td><code>value</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td>target value</td>
+                            <td>Initial HTML. Falls back to the textarea value / element innerHTML.</td>
+                        </tr>
+                        <tr>
+                            <td><code>placeholder</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td><code>'Start writing…'</code></td>
+                            <td>Empty-state text.</td>
+                        </tr>
+                        <tr>
+                            <td><code>minHeight</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">number</span></td>
+                            <td><code>160</code></td>
+                            <td>Minimum editing height, in pixels.</td>
+                        </tr>
+                        <tr>
+                            <td><code>height</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">number</span></td>
+                            <td>—</td>
+                            <td>Max height (px) before the surface scrolls.</td>
+                        </tr>
+                        <tr>
+                            <td><code>embedHosts</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string[]</span></td>
+                            <td>YouTube / Vimeo</td>
+                            <td>Allowed <code>&lt;iframe&gt;</code> hosts for video embeds.</td>
+                        </tr>
+                        <tr>
+                            <td><code>allowData</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">boolean</span></td>
+                            <td><code>false</code></td>
+                            <td>Keep <code>data-*</code> attributes through sanitization (off by default — they are stripped).</td>
+                        </tr>
+                        <tr>
+                            <td><code>allowClasses</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">boolean</span></td>
+                            <td><code>false</code></td>
+                            <td>Keep all <code>class</code> attributes (off by default — classes are filtered to the internal allowlist).</td>
+                        </tr>
+                        <tr>
+                            <td><code>contextMenu</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">boolean | array</span></td>
+                            <td>built-in</td>
+                            <td>Right-click / long-press text menu. <code>false</code> disables it (native menu shows); an array replaces its items (see Context menu).</td>
+                        </tr>
+                        <tr>
+                            <td><code>onChange</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">function</span></td>
+                            <td>—</td>
+                            <td>Called with the sanitized HTML on every change.</td>
+                        </tr>
+                        <tr>
+                            <td><code>onCount</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">function</span></td>
+                            <td>—</td>
+                            <td>Called with <code>{ words, chars }</code> whenever the count changes.</td>
+                        </tr>
+                        <tr>
+                            <td><code>maxChars</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">number</span></td>
+                            <td>—</td>
+                            <td>Hard character cap; typing past it is blocked and the footer shows <code>n / max</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>uploadUrl</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td>—</td>
+                            <td>Endpoint the editor POSTs an image to (multipart), expecting <code>{ url }</code> back. Enables the upload UI.</td>
+                        </tr>
+                        <tr>
+                            <td><code>onImageUpload</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">function</span></td>
+                            <td>—</td>
+                            <td><code>file =&gt; Promise&lt;url&gt;</code> custom uploader; takes precedence over <code>uploadUrl</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>uploadField</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">string</span></td>
+                            <td><code>'file'</code></td>
+                            <td>Multipart field name for <code>uploadUrl</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>uploadHeaders</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">object</span></td>
+                            <td><code>{}</code></td>
+                            <td>Extra request headers for <code>uploadUrl</code> (e.g. CSRF).</td>
+                        </tr>
+                        <tr>
+                            <td><code>maxImageKb</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">number</span></td>
+                            <td>—</td>
+                            <td>Client-side size limit before upload.</td>
+                        </tr>
+                        <tr>
+                            <td><code>icons</code> <span class="optional-badge">optional</span></td>
+                            <td><span class="type-badge">object</span></td>
+                            <td>—</td>
+                            <td>Override toolbar icons by token, e.g. <code>{ bold: '&lt;svg…&gt;' }</code>.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="methods">
+            <div class="doc-section">
+                <div class="doc-section-title">Methods</div>
+                <table class="api-table">
+                    <thead>
+                        <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>getHTML()</code></td><td><span class="type-badge">string</span></td><td>Sanitized HTML; empty string when blank.</td></tr>
+                        <tr><td><code>setHTML(html)</code></td><td><span class="type-badge">this</span></td><td>Replace the content.</td></tr>
+                        <tr><td><code>getText()</code></td><td><span class="type-badge">string</span></td><td>Plain-text content.</td></tr>
+                        <tr><td><code>getCount()</code></td><td><span class="type-badge">{ words, chars }</span></td><td>Word / character count; works even with the footer hidden.</td></tr>
+                        <tr><td><code>focus()</code></td><td><span class="type-badge">this</span></td><td>Focus the editing surface.</td></tr>
+                        <tr><td><code>on(event, cb)</code></td><td><span class="type-badge">this</span></td><td>Subscribe to <code>'change'</code> (html) or <code>'count'</code> (<code>{ words, chars }</code>).</td></tr>
+                        <tr><td><code>destroy()</code></td><td><span class="type-badge">void</span></td><td>Remove the editor and restore the target.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="events">
+            <div class="doc-section">
+                <div class="doc-section-title">Events</div>
+                <div class="gap-stack">
+                    <p class="note">Two events fire: <code>change</code> (the sanitized HTML) on every edit, and <code>count</code> (<code>{ words, chars }</code>) when the word/char count changes. Subscribe three ways — the <code>onChange</code>/<code>onCount</code> options, the chainable <code>on()</code> method, or native DOM events on the element (<code>yurba-editor.&lt;name&gt;</code>, payload in <code>event.detail</code>).</p>
+                    <div class="code-block">
+                        <pre><code class="language-javascript">const ed = YurbaEditor.create({ field: '#body' })
+ed.on('change', html =&gt; save(html))
+ed.on('count', ({ words, chars }) =&gt; label.textContent = `${words} words · ${chars} chars`)
+ed.addEventListener('yurba-editor.count', e =&gt; console.log(e.detail))</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="static">
+            <div class="doc-section">
+                <div class="doc-section-title">Static</div>
+                <div class="gap-stack">
+                    <p class="note">Members on the <code>YurbaEditor</code> global (the custom-element class). They need no instance.</p>
+                    <table class="api-table">
+                        <thead>
+                            <tr><th>Member</th><th>Description</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>YurbaEditor.create(options?)</code></td><td>The factory that builds a <code>&lt;yurba-editor&gt;</code> and returns it (see Creating an editor).</td></tr>
+                            <tr><td><code>YurbaEditor.sanitize(html, opts?)</code></td><td>Run the same allowlist sanitizer on a string — e.g. to clean stored HTML before rendering it. <code>opts</code> takes <code>embedHosts</code>, <code>allowData</code>, and <code>allowClasses</code>.</td></tr>
+                            <tr><td><code>YurbaEditor.DEFAULT_TOOLBAR</code></td><td>The default array of toolbar tokens — read it to build a custom toolbar from the default set.</td></tr>
+                            <tr><td><code>YurbaEditor.EMBED_HOSTS</code></td><td>The default <code>&lt;iframe&gt;</code> embed-host allowlist (YouTube / Vimeo).</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="code-block">
+                        <pre><code class="language-javascript">// sanitize stored HTML before printing it — no editor needed
+el.innerHTML = YurbaEditor.sanitize(post.body)
+
+// start from the default toolbar, minus the media buttons
+const toolbar = YurbaEditor.DEFAULT_TOOLBAR.filter(t =&gt; !['image', 'video', 'table'].includes(t))
+YurbaEditor.create({ field: '#body', toolbar })</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="tokens">
+            <div class="doc-header">
+                <h2 class="doc-component-name">Toolbar tokens</h2>
+                <p class="doc-component-desc">Pass any subset as the <code>toolbar</code> option to control which controls appear and in what order.</p>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">Available tokens</div>
+                <div class="gap-stack">
+                    <div class="token-list">
+                        <code>undo</code><code>redo</code><code>heading</code><code>bold</code><code>italic</code><code>underline</code><code>strike</code><code>lowercase</code><code>capitalize</code><code>uppercase</code><code>sup</code><code>sub</code><code>forecolor</code><code>backcolor</code><code>alignleft</code><code>aligncenter</code><code>alignright</code><code>alignjustify</code><code>ul</code><code>ol</code><code>outdent</code><code>indent</code><code>link</code><code>image</code><code>video</code><code>table</code><code>hr</code><code>blockquote</code><code>code</code><code>codeblock</code><code>clear</code><code>find</code><code>source</code><code>fullscreen</code>
+                    </div>
+                    <p class="note"><code>'|'</code> renders a separator between groups.</p>
+                    <div class="code-block">
+                        <pre><code class="language-javascript">YurbaEditor.create({
+    field: '#body',
+    toolbar: ['heading', '|', 'bold', 'italic', 'forecolor', '|', 'ul', 'ol', 'link', 'clear']
+})</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="context-menu">
+            <div class="doc-header">
+                <h2 class="doc-component-name">Context menu</h2>
+                <p class="doc-component-desc">Right-clicking (or long-pressing) text opens a built-in menu — it works even with the toolbar hidden, so it is the primary way to format and search a bare input.</p>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">Default items</div>
+                <p class="note"><b>Select all / Copy / Paste / Clear</b>, a <b>Formatting</b> submenu (Clear formatting, bold, italic, underline, strikethrough, inline code, link), a <b>Case</b> submenu (lowercase / Capitalize / UPPERCASE), and <b>Find &amp; replace</b>. Right-clicking a link, image, or table cell still opens its own menu.</p>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">Disable or customize</div>
+                <div class="gap-stack">
+                    <div class="code-block">
+                        <pre><code class="language-javascript">YurbaEditor.create({ field: '#body', contextMenu: false })</code></pre>
+                    </div>
+                    <p class="note">Pass an array to replace the items. Each is <code>{ label, icon, action | onClick, children, separator, danger }</code> — <code>icon</code> is a Material Symbols name, <code>action</code> a built-in id (<code>selectAll, copy, paste, clear, clearFormat, find, bold, italic, underline, strike, code, link, lower, capitalize, upper</code>), <code>onClick(editor)</code> runs custom code, <code>children</code> makes a submenu, and <code>danger</code> tints it red.</p>
+                    <div class="code-block">
+                        <pre><code class="language-javascript">YurbaEditor.create({
+    field: '#body',
+    contextMenu: [
+        { action: 'selectAll', icon: 'select_all', label: 'Select all' },
+        { separator: true },
+        { icon: 'auto_awesome', label: 'Insert date', onClick: ed =&gt; ed.focus() }
+    ]
+})</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="upload">
+            <div class="doc-header">
+                <h2 class="doc-component-name">Image upload</h2>
+                <p class="doc-component-desc">By default the <code>image</code> button only inserts by URL. Provide <code>uploadUrl</code> (or <code>onImageUpload</code>) and it becomes an <b>Upload image… / By URL…</b> menu, and the editor also accepts drag-and-drop and paste of image files.</p>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">Endpoint upload</div>
+                <div class="gap-stack">
+                    <div class="code-block">
+                        <pre><code class="language-javascript">YurbaEditor.create({
+    field: '#body',
+    uploadUrl: '/admin/_editor/upload',
+    uploadHeaders: { 'X-CSRF-TOKEN': token },
+    maxImageKb: 4096
+})</code></pre>
+                    </div>
+                    <p class="note">The endpoint receives a multipart POST (field name <code>file</code>, override with <code>uploadField</code>) and must respond <code>{ "url": "/path/to/image.jpg" }</code>. The URL is re-validated before insertion. For custom flows (e.g. S3 presigned) use <code>onImageUpload(file) =&gt; Promise&lt;url&gt;</code> instead. Validate on the server and reject SVG.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="theming">
+            <div class="doc-header">
+                <h2 class="doc-component-name">Theming</h2>
+                <p class="doc-component-desc">Every color, the corner radius, the shadow and the font are <code>--ye-*</code> CSS variables on <code>.ye</code>. Override any of them on the editor element or an ancestor to reskin — no build step.</p>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">CSS variables</div>
+                <table class="api-table">
+                    <thead>
+                        <tr><th>Variable</th><th>Default (light)</th><th>Role</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>--ye-surface</code></td><td><code>#ffffff</code></td><td>Editor background</td></tr>
+                        <tr><td><code>--ye-surface-2</code></td><td><code>#f9fafb</code></td><td>Toolbar, code, cell fills</td></tr>
+                        <tr><td><code>--ye-border</code></td><td><code>#e5e7eb</code></td><td>Dividers, light borders</td></tr>
+                        <tr><td><code>--ye-border-strong</code></td><td><code>#d1d5db</code></td><td>Editor frame, inputs, table cells</td></tr>
+                        <tr><td><code>--ye-text</code></td><td><code>#1f2937</code></td><td>Body text</td></tr>
+                        <tr><td><code>--ye-text-soft</code></td><td><code>#374151</code></td><td>Toolbar icons, secondary text</td></tr>
+                        <tr><td><code>--ye-muted</code></td><td><code>#6b7280</code></td><td>Placeholder, counts, hints</td></tr>
+                        <tr><td><code>--ye-accent</code></td><td><code>#2563eb</code></td><td>Links, focus, active state</td></tr>
+                        <tr><td><code>--ye-accent-ink</code></td><td><code>#1d4ed8</code></td><td>Text/icon on accent fills</td></tr>
+                        <tr><td><code>--ye-accent-soft</code></td><td><code>#dbeafe</code></td><td>Active-button / highlight fill</td></tr>
+                        <tr><td><code>--ye-danger</code></td><td><code>#dc2626</code></td><td>Destructive actions</td></tr>
+                        <tr><td><code>--ye-danger-soft</code></td><td><code>#fef2f2</code></td><td>Destructive-action fill</td></tr>
+                        <tr><td><code>--ye-radius</code></td><td><code>9px</code></td><td>Corner radius</td></tr>
+                        <tr><td><code>--ye-shadow</code></td><td>elevation</td><td>Popup / menu shadow</td></tr>
+                        <tr><td><code>--ye-font</code></td><td>system UI stack</td><td>Editor font family</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">Custom accent &amp; radius</div>
+                <div class="code-block">
+                    <pre><code class="language-css">.ye {
+    --ye-accent: #16a34a;
+    --ye-radius: 14px;
+}</code></pre>
+                </div>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">Dark mode</div>
+                <p class="note">Dark mode remaps the color variables only — radius, shadow and font stay. It applies automatically under <code>prefers-color-scheme: dark</code>; opt a single editor out with the <code>ye--light</code> class, or force dark anywhere with <code>ye--dark</code>. Toggle it live with the switch in the header above.</p>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="security">
+            <div class="doc-header">
+                <h2 class="doc-component-name">Security</h2>
+                <p class="doc-component-desc">The value is HTML — render it as such, and re-sanitize on the server. The browser is never the only gate.</p>
+            </div>
+            <div class="doc-section">
+                <div class="doc-section-title">What sanitize enforces</div>
+                <p class="note">A tag allowlist, a per-tag attribute allowlist, <code>style</code> filtered to a safe property set, <code>javascript:</code>/<code>data:</code> URLs rejected, and <code>&lt;iframe&gt;</code> restricted to the configured embed hosts. <code>YurbaEditor.sanitize()</code> applies the exact same rules.</p>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script src="dist/yurba-editor.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="index.js"></script>
+
+</body>
+</html>
