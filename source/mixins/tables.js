@@ -1,3 +1,4 @@
+import { TABLE_OPS } from '../helpers/constants.js'
 import { ancestorTag, exec } from '../helpers/utils.js'
 
 export const withTables = (Base) => class extends Base {
@@ -173,24 +174,15 @@ export const withTables = (Base) => class extends Base {
     buildTablePop (pop) {
         pop.innerHTML = ''
         if (this.currentCell() != null) {
-            const ops = [
-                ['row-above', 'Row above'], ['row-below', 'Row below'], ['col-left', 'Col left'], ['col-right', 'Col right'],
-                ['|'],
-                ['cell-left', 'Align left'], ['cell-center', 'Align center'], ['cell-right', 'Align right'],
-                ['|'],
-                ['merge-right', 'Merge right'], ['merge-down', 'Merge down'], ['split', 'Split cell'],
-                ['|'],
-                ['row-del', 'Delete row'], ['col-del', 'Delete col'],
-                ['|'],
-                ['header', 'Header row'], ['grid', 'Toggle grid'], ['del', 'Delete table']
-            ]
             const wrap = document.createElement('div')
             wrap.className = 'ye-tableops'
-            ops.forEach(op => {
+            wrap.setAttribute('role', 'menu')
+            TABLE_OPS.forEach(op => {
                 if (op[0] == '|') { const d = document.createElement('div'); d.className = 'ye-tableops__sep'; wrap.appendChild(d); return }
                 const b = document.createElement('button')
                 b.type = 'button'
-                b.innerHTML = this.renderIcon(op[0]) + '<span>' + op[1] + '</span>'
+                b.setAttribute('role', 'menuitem')
+                b.innerHTML = this.renderIcon(op[0]) + '<span>' + this.t(op[1]) + '</span>'
                 b.dataset.ye = op[0]
                 if (op[0] == 'del') b.className = 'ye-tableops__danger'
                 wrap.appendChild(b)
@@ -201,7 +193,9 @@ export const withTables = (Base) => class extends Base {
             grid.className = 'ye-grid'
             for (let r = 1; r <= 6; r++) {
                 for (let c = 1; c <= 6; c++) {
-                    const cell = document.createElement('div')
+                    const cell = document.createElement('button')
+                    cell.type = 'button'
+                    cell.setAttribute('aria-label', r + ' × ' + c)
                     cell.className = 'ye-grid__cell'
                     cell.dataset.r = r
                     cell.dataset.c = c
@@ -210,10 +204,10 @@ export const withTables = (Base) => class extends Base {
             }
             const label = document.createElement('div')
             label.className = 'ye-grid__label'
-            label.textContent = 'Pick size'
+            label.textContent = this.t('Pick size')
             const opt = document.createElement('label')
             opt.className = 'ye-grid__opt'
-            opt.innerHTML = '<input type="checkbox" data-ye-table-header> Header row'
+            opt.innerHTML = '<input type="checkbox" data-ye-table-header> ' + this.t('Header row')
             pop.appendChild(grid)
             pop.appendChild(label)
             pop.appendChild(opt)

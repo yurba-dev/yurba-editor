@@ -1,4 +1,4 @@
-import { dtHasFiles, exec, imageFilesFrom } from '../helpers/utils.js'
+import { cpLen, dtHasFiles, exec, imageFilesFrom, rangeFromPoint } from '../helpers/utils.js'
 
 export const withWiring = (Base) => class extends Base {
     wire () {
@@ -11,23 +11,33 @@ export const withWiring = (Base) => class extends Base {
                 t == 'insertFromPaste' || t == 'insertFromDrop'
             if (!this.maxChars) return
             if (t.indexOf('insert') != 0) return
-            const selLen = ((window.getSelection() || {}).toString ? window.getSelection().toString() : '').length
-            const room = this.maxChars - (area.textContent.length - selLen)
             let add = 1
-            if ((t == 'insertText' || t == 'insertReplacementText') && e.data != null) add = e.data.length
+            if ((t == 'insertText' || t == 'insertReplacementText') && e.data != null) add = cpLen(e.data)
             else if (t == 'insertParagraph' || t == 'insertLineBreak') add = 0
-            if (add > room) e.preventDefault()
+            if (add > this.roomLeft()) e.preventDefault()
         })
         area.addEventListener('input', () => {
+            // A dragged-in image lands without a paste event
+            if (this.inline) area.querySelectorAll('img').forEach(img => { if (!this.isGlyph(img)) img.remove() })
             this.enforceLimit()
             this.sync()
             if (this.inputBoundary) { this.inputBoundary = false; this.recordState() }
+        })
+        area.addEventListener('compositionstart', () => { this.composing = true })
+        area.addEventListener('compositionend', () => {
+            this.composing = false
+            this.enforceLimit()
+            this.sync()
         })
         area.addEventListener('blur', () => this.sync())
         area.addEventListener('keyup', () => this.updateStates())
         area.addEventListener('mouseup', () => this.updateStates())
         area.addEventListener('keydown', e => {
-            if (this.inline && e.key == 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); exec('insertLineBreak'); return }
+            if (this.inline && e.key == 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                // A host handler (e.g. send) may have taken Enter first
+                if (!e.defaultPrevented) { e.preventDefault(); exec('insertLineBreak') }
+                return
+            }
             this.markdownShortcut(e)
             if ((e.ctrlKey || e.metaKey) && this.shortcut(e)) { e.preventDefault(); return }
             if (e.key == 'Escape') {
@@ -42,12 +52,15 @@ export const withWiring = (Base) => class extends Base {
 
         area.addEventListener('click', e => {
             const img = e.target && e.target.closest ? e.target.closest('img') : null
-            if (img && area.contains(img)) this.selectImage(img)
+            if (img && area.contains(img) && !this.isGlyph(img)) this.selectImage(img)
             else this.deselectImage()
         })
 
         let lpTimer = null, lpStart = null
-        const clearLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null } }
+        function clearLp () {
+            if (lpTimer) { clearTimeout(lpTimer); lpTimer = null }
+        }
+        this.clearLongPress = clearLp
         area.addEventListener('touchstart', e => {
             if (e.touches.length != 1) { clearLp(); return }
             const t = e.touches[0]
@@ -77,14 +90,26 @@ export const withWiring = (Base) => class extends Base {
 
         area.addEventListener('paste', e => {
             const data = e.clipboardData || window.clipboardData
+            if (data == null) return
             const imgs = this.uploadEnabled ? imageFilesFrom(data) : []
             if (imgs.length) { e.preventDefault(); this.uploadFiles(imgs); return }
             e.preventDefault()
-            const html = data.getData('text/html')
-            if (html) exec('insertHTML', this.clean(html, true))
-            else exec('insertText', data.getData('text/plain'))
-            this.enforceLimit()
-            this.sync()
+            this.insertClipboard(data.getData('text/html'), data.getData('text/plain'))
+        })
+
+        area.addEventListener('dragstart', () => { this.dragInside = true })
+        area.addEventListener('dragend', () => { this.dragInside = false })
+        area.addEventListener('drop', e => {
+            const dt = e.dataTransfer
+            if (this.dragInside || dt == null || dtHasFiles(dt)) return
+            const html = dt.getData('text/html')
+            const text = dt.getData('text/plain')
+            if (!html && !text) return
+            e.preventDefault()
+            area.focus()
+            const r = rangeFromPoint(e.clientX, e.clientY)
+            if (r && area.contains(r.startContainer)) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(r) }
+            this.insertClipboard(html, text)
         })
 
         this.onMousedown = e => {
@@ -92,7 +117,6 @@ export const withWiring = (Base) => class extends Base {
             this.saveRange()
             if (e.target.closest('.ye-toolbar__btn, .ye-menu__item, .ye-swatch, .ye-tableops button, .ye-grid__cell')) e.preventDefault()
         }
-        document.addEventListener('mousedown', this.onMousedown)
 
         this.onChange = e => {
             if (!this.owns(e.target)) return
@@ -100,7 +124,6 @@ export const withWiring = (Base) => class extends Base {
             if (el == null) return
             this.applyCustomColor(el)
         }
-        document.addEventListener('change', this.onChange)
         this.onHexKey = e => {
             if (!this.owns(e.target)) return
             if (e.key == 'Enter' && e.target.classList && e.target.classList.contains('ye-color-hex')) {
@@ -108,7 +131,6 @@ export const withWiring = (Base) => class extends Base {
                 this.applyCustomColor(e.target)
             }
         }
-        document.addEventListener('keydown', this.onHexKey)
 
         this.onClick = e => {
             if (!this.owns(e.target)) return
@@ -124,6 +146,7 @@ export const withWiring = (Base) => class extends Base {
                     if (pop.hasAttribute('data-ye-table-pop')) this.buildTablePop(pop)
                     document.body.appendChild(pop)
                     menu.classList.add('is-open')
+                    toggle.setAttribute('aria-expanded', 'true')
                     this.openMenuEl = menu
                     this.positionMenuPop(menu)
                     void pop.offsetWidth
@@ -166,7 +189,6 @@ export const withWiring = (Base) => class extends Base {
                 this.closeMenus(); this.sync(); this.updateStates()
             }
         }
-        document.addEventListener('click', this.onClick)
 
         this.onMouseover = e => {
             if (!this.owns(e.target)) return
@@ -183,7 +205,6 @@ export const withWiring = (Base) => class extends Base {
             const label = container.querySelector('.ye-grid__label')
             if (label) label.textContent = gr + ' × ' + gc
         }
-        document.addEventListener('mouseover', this.onMouseover)
 
         if (this.uploadEnabled) {
             this.fileInput.addEventListener('change', () => {
@@ -204,8 +225,8 @@ export const withWiring = (Base) => class extends Base {
                 this.root.classList.remove('ye--drop')
                 const files = imageFilesFrom(e.dataTransfer)
                 if (files.length == 0) return
-                const r = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null
-                if (r) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(r) }
+                const r = rangeFromPoint(e.clientX, e.clientY)
+                if (r && area.contains(r.startContainer)) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(r) }
                 this.uploadFiles(files)
             })
         }
@@ -220,10 +241,26 @@ export const withWiring = (Base) => class extends Base {
             }
             if (!this.root.contains(e.target) && !(this.ctxPop && this.ctxPop.contains(e.target))) this.deselectImage()
         }
-        document.addEventListener('click', this.docClick)
 
-        this.ctxDismiss = () => { this.hideTableCtx(); this.closeTextMenu(); this.closeMenus(); if (this.selectedImg) this.showImgHandle() }
-        window.addEventListener('scroll', this.ctxDismiss, true)
-        window.addEventListener('resize', this.ctxDismiss)
+        this.ctxDismiss = e => {
+            const inside = [this.textMenuEl, this.textPop, this.ctxPop].some(el => el && e && e.target instanceof Node && el.contains(e.target))
+            if (inside) return
+            this.hideTableCtx(); this.closeTextMenu(); this.closeMenus(); if (this.selectedImg) this.showImgHandle()
+        }
+    }
+
+    listenGlobal (on) {
+        if (this.onClick == null || !!this.globalOn == on) return
+        this.globalOn = on
+        const m = on ? 'addEventListener' : 'removeEventListener'
+        document[m]('mousedown', this.onMousedown)
+        document[m]('change', this.onChange)
+        document[m]('keydown', this.onHexKey)
+        document[m]('click', this.onClick)
+        document[m]('mouseover', this.onMouseover)
+        document[m]('focusin', this.onMouseover)
+        document[m]('click', this.docClick)
+        window[m]('scroll', this.ctxDismiss, true)
+        window[m]('resize', this.ctxDismiss)
     }
 }

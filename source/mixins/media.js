@@ -9,9 +9,9 @@ export const withMedia = (Base) => class extends Base {
         const newTab = anchor ? (anchor.getAttribute('target') || '_blank').toLowerCase() != '_self' : true
         this.promptPop({
             fields: [
-                { placeholder: 'Link URL', value: anchor ? anchor.getAttribute('href') : 'https://' },
-                { placeholder: 'Title (optional)', value: anchor ? (anchor.getAttribute('title') || '') : '' },
-                { type: 'checkbox', label: 'Open in new tab', checked: newTab }
+                { placeholder: this.t('Link URL'), value: anchor ? anchor.getAttribute('href') : 'https://' },
+                { placeholder: this.t('Title (optional)'), value: anchor ? (anchor.getAttribute('title') || '') : '' },
+                { type: 'checkbox', label: this.t('Open in new tab'), checked: newTab }
             ],
             onSubmit: vals => {
                 const url = vals[0], title = vals[1], openNew = vals[2]
@@ -26,7 +26,7 @@ export const withMedia = (Base) => class extends Base {
                     }
                     return null
                 }
-                if (!isSafeUrl(url)) return 'That link scheme is not allowed.'
+                if (!isSafeUrl(url)) return this.t('That link scheme is not allowed.')
                 let a = anchor
                 if (a) { a.setAttribute('href', url) }
                 else if (selected == '') { exec('insertHTML', '<a href="' + escapeHtml(url) + '">' + escapeHtml(url) + '</a>'); a = this.currentAnchor() }
@@ -44,10 +44,10 @@ export const withMedia = (Base) => class extends Base {
 
     insertImage () {
         this.promptPop({
-            fields: [{ placeholder: 'Image URL', value: 'https://' }, { placeholder: 'Alt text (optional)', value: '' }],
+            fields: [{ placeholder: this.t('Image URL'), value: 'https://' }, { placeholder: this.t('Alt text (optional)'), value: '' }],
             onSubmit: vals => {
                 const url = vals[0]
-                if (!isSafeUrl(url)) return 'That image URL is not allowed.'
+                if (!isSafeUrl(url)) return this.t('That image URL is not allowed.')
                 exec('insertHTML', '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(vals[1] || '') + '">')
                 return null
             }
@@ -56,10 +56,10 @@ export const withMedia = (Base) => class extends Base {
 
     insertVideo () {
         this.promptPop({
-            fields: [{ placeholder: 'YouTube or Vimeo URL', value: 'https://' }],
+            fields: [{ placeholder: this.t('YouTube or Vimeo URL'), value: 'https://' }],
             onSubmit: vals => {
                 const src = embedFromUrl(vals[0])
-                if (src == null) return 'Only YouTube and Vimeo links are supported.'
+                if (src == null) return this.t('Only YouTube and Vimeo links are supported.')
                 exec('insertHTML', '<iframe src="' + escapeHtml(src) + '" frameborder="0" allowfullscreen></iframe><p><br></p>')
                 return null
             }
@@ -79,7 +79,7 @@ export const withMedia = (Base) => class extends Base {
             this.insertLink()
         } else if (op == 'open') {
             const href = anchor.getAttribute('href')
-            if (href) window.open(href, '_blank', 'noopener')
+            if (href && isSafeUrl(href)) window.open(href, '_blank', 'noopener')
         } else if (op == 'remove') {
             const parent = anchor.parentNode
             while (anchor.firstChild) parent.insertBefore(anchor.firstChild, anchor)
@@ -99,21 +99,21 @@ export const withMedia = (Base) => class extends Base {
     uploadFile (file) {
         if (!/^image\//.test(file.type)) return Promise.resolve()
         if (this.maxImageKb && file.size > this.maxImageKb * 1024) {
-            window.alert('Image is too large (max ' + this.maxImageKb + ' KB).')
+            window.alert(this.t('Image is too large') + ' (max ' + this.maxImageKb + ' KB).')
             return Promise.resolve()
         }
         this.saveRange()
         this.setBusy(true)
-        const insert = url => {
+        // Wrapped so a sync throw still clears the busy state
+        const task = this.onImageUpload ? new Promise(resolve => resolve(this.onImageUpload(file))) : this.postImage(file)
+        return task.then(url => {
             if (!url || !isSafeUrl(url)) throw new Error('bad upload url')
+            // Gone editor: insertHTML would land in whatever has focus now
+            if (this.yeDestroyed || !this.area.isConnected) return
             this.restoreRange()
             exec('insertHTML', '<img src="' + escapeHtml(url) + '" alt="">')
             this.sync()
-        }
-        const task = this.onImageUpload
-            ? Promise.resolve(this.onImageUpload(file)).then(insert)
-            : this.postImage(file).then(insert)
-        return task.catch(() => window.alert('Image upload failed.')).then(() => this.setBusy(false))
+        }).catch(() => window.alert(this.t('Image upload failed.'))).then(() => this.setBusy(false))
     }
 
     postImage (file) {
@@ -129,7 +129,7 @@ export const withMedia = (Base) => class extends Base {
         this.root.classList.toggle('ye--busy', on)
         const count = this.root.querySelector('[data-ye-count]')
         if (count == null) return
-        if (on) count.textContent = 'Uploading…'
+        if (on) count.textContent = this.t('Uploading…')
         else this.updateCount()
     }
 
@@ -154,7 +154,7 @@ export const withMedia = (Base) => class extends Base {
     editAlt (img) {
         this.nextFormAnchor = this.ctxAnchorPos
         this.promptPop({
-            fields: [{ placeholder: 'Alt text (describe the image)', value: img.getAttribute('alt') || '' }],
+            fields: [{ placeholder: this.t('Alt text (describe the image)'), value: img.getAttribute('alt') || '' }],
             onSubmit: vals => { img.setAttribute('alt', vals[0]); this.sync(); return null }
         })
     }
@@ -195,18 +195,19 @@ export const withMedia = (Base) => class extends Base {
         const startX = e.clientX
         const startW = img.getBoundingClientRect().width
         const maxW = this.area.clientWidth
-        const move = ev => {
+        const editor = this
+        function move (ev) {
             let w = Math.round(startW + (ev.clientX - startX))
             w = Math.max(24, Math.min(w, maxW))
             img.style.width = w + 'px'
             img.style.height = ''
             img.removeAttribute('width'); img.removeAttribute('height')
-            this.showImgHandle()
+            editor.showImgHandle()
         }
-        const up = () => {
+        function up () {
             document.removeEventListener('mousemove', move)
             document.removeEventListener('mouseup', up)
-            this.sync()
+            editor.sync()
         }
         document.addEventListener('mousemove', move)
         document.addEventListener('mouseup', up)

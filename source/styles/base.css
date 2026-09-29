@@ -1,30 +1,45 @@
+/* Tokens */
+
 :root {
-    --ye-surface: #ffffff;
+    --ye-surface: var(--yurba-main-color, #ffffff);
     --ye-surface-2: #f9fafb;
-    --ye-border: #e5e7eb;
-    --ye-border-strong: #d1d5db;
-    --ye-text: #1f2937;
-    --ye-text-soft: #374151;
+    --ye-border: var(--yurba-border-color, #e5e7eb);
+    --ye-border-strong: var(--yurba-fill-color, #d1d5db);
+    --ye-text: var(--yurba-text-color, #1f2937);
+    --ye-text-soft: var(--yurba-text-color, #374151);
     --ye-muted: #6b7280;
-    --ye-accent: #2563eb;
-    --ye-accent-ink: #1d4ed8;
-    --ye-accent-soft: #dbeafe;
-    --ye-danger: #dc2626;
+    --ye-accent: var(--yurba-brand-color, #2563eb);
+    --ye-accent-ink: var(--yurba-brand-color, #1d4ed8);
+    --ye-accent-soft: var(--yurba-brand-color-opacity, #dbeafe);
+    --ye-on-accent: var(--yurba-on-brand-color, #ffffff);
+    --ye-hover: var(--yurba-hover-color, #0000000f);
+    --ye-fill: var(--yurba-fill-color, #00000021);
+    --ye-danger: var(--yurba-red-color, #dc2626);
     --ye-danger-soft: #fef2f2;
-    --ye-radius: 9px;
-    --ye-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 12px rgba(16, 24, 40, .1);
-    --ye-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --ye-radius: var(--yurba-radius-l, 14px);
+    --ye-shadow: var(--yurba-shadow-menu, 0 6px 24px rgb(0 0 0 / 14%));
 }
 
+/* Frame */
+
 .ye {
-    border: 1px solid var(--ye-border-strong);
+    border: 1px solid var(--ye-border);
     border-radius: var(--ye-radius);
     background: var(--ye-surface);
     color: var(--ye-text);
-    font-family: var(--ye-font);
+    font-family: var(--ye-font, inherit);
     font-size: 14px;
     display: flex;
     flex-direction: column;
+    transition: border-color .15s ease;
+}
+
+.ye:hover {
+    border-color: var(--ye-border-strong);
+}
+
+.ye:focus-within {
+    border-color: var(--ye-accent);
 }
 
 .ye *,

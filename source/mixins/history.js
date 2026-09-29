@@ -50,12 +50,11 @@ export const withHistory = (Base) => class extends Base {
     }
 
     updateHistoryButtons () {
-        const set = (cmd, disabled) => {
+        const states = [['undo', this.histIndex <= 0], ['redo', this.histIndex >= this.history.length - 1]]
+        states.forEach(([cmd, disabled]) => {
             const b = this.root.querySelector('.ye-toolbar__btn[data-cmd="' + cmd + '"]')
             if (b) { b.disabled = disabled; b.classList.toggle('is-disabled', disabled) }
-        }
-        set('undo', this.histIndex <= 0)
-        set('redo', this.histIndex >= this.history.length - 1)
+        })
     }
 
     getCaret () {

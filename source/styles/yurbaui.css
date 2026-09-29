@@ -1,0 +1,25 @@
+/* YurbaUI */
+
+.y-win .ye-formpop,
+.y-win .ye-findpop {
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+}
+
+.y-win .ye-findpop__btn[data-ye-find="close"] {
+    display: none;
+}
+
+.y-dropdown__menu > .ye-menu__pop {
+    position: static;
+    min-width: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    pointer-events: auto;
+}

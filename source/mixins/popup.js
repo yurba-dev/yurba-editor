@@ -1,7 +1,7 @@
 export const withPopup = (Base) => class extends Base {
     makePopup (extra) {
         const el = document.createElement('div')
-        el.className = 'y-context-menu is-hidden' + (extra ? ' ' + extra : '')
+        el.className = 'ye-popup is-hidden' + (extra ? ' ' + extra : '')
         document.body.appendChild(el)
         return el
     }

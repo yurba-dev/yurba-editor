@@ -1,23 +1,38 @@
-import { exec } from '../helpers/utils.js'
+import { escapeHtml, escapeRegExp, exec } from '../helpers/utils.js'
+
+// Taken at load: a page may later shadow Highlight
+const CssHighlight = typeof Highlight == 'function' ? Highlight : null
 
 export const withFind = (Base) => class extends Base {
     openFindPop () {
         if (this.findPop) { this.findInput.focus(); this.findInput.select(); return }
         const pop = this.makePopup('ye-findpop')
+        this.fillFindPop(pop)
+        this.placePopupBelow(pop, (this.toolbar || this.area).getBoundingClientRect(), 'right')
+        this.revealPopup(pop)
+        this.findInput.focus(); this.findInput.select()
+        this.runFind()
+    }
+
+    fillFindPop (pop) {
+        const editor = this
+        function t (s) {
+            return escapeHtml(editor.t(s))
+        }
         pop.innerHTML =
             '<div class="ye-findpop__row">' +
-            '<input type="text" class="ye-formpop__input ye-findpop__q" placeholder="Find" spellcheck="false">' +
-            '<span class="ye-findpop__count"></span>' +
-            '<button type="button" class="ye-findpop__btn" data-ye-find="prev" title="Previous">' + this.renderIcon('find-prev') + '</button>' +
-            '<button type="button" class="ye-findpop__btn" data-ye-find="next" title="Next">' + this.renderIcon('find-next') + '</button>' +
-            '<button type="button" class="ye-findpop__btn" data-ye-find="close" title="Close">✕</button>' +
+            '<input type="text" class="ye-formpop__input ye-findpop__q" placeholder="' + t('Find') + '" aria-label="' + t('Find') + '" spellcheck="false">' +
+            '<span class="ye-findpop__count" aria-live="polite"></span>' +
+            '<button type="button" class="ye-findpop__btn" data-ye-find="prev" title="' + t('Previous') + '" aria-label="' + t('Previous') + '">' + this.renderIcon('find-prev') + '</button>' +
+            '<button type="button" class="ye-findpop__btn" data-ye-find="next" title="' + t('Next') + '" aria-label="' + t('Next') + '">' + this.renderIcon('find-next') + '</button>' +
+            '<button type="button" class="ye-findpop__btn" data-ye-find="close" title="' + t('Close') + '" aria-label="' + t('Close') + '">' + this.iconOr('find-close', '✕') + '</button>' +
             '</div>' +
             '<div class="ye-findpop__row">' +
-            '<input type="text" class="ye-formpop__input ye-findpop__r" placeholder="Replace with" spellcheck="false">' +
-            '<button type="button" class="ye-formpop__btn" data-ye-find="one">Replace</button>' +
-            '<button type="button" class="ye-formpop__btn" data-ye-find="all">All</button>' +
+            '<input type="text" class="ye-formpop__input ye-findpop__r" placeholder="' + t('Replace with') + '" aria-label="' + t('Replace with') + '" spellcheck="false">' +
+            '<button type="button" class="ye-formpop__btn" data-ye-find="one">' + t('Replace') + '</button>' +
+            '<button type="button" class="ye-formpop__btn" data-ye-find="all">' + t('All') + '</button>' +
             '</div>' +
-            '<label class="ye-formpop__check"><input type="checkbox" class="ye-findpop__case"> Match case</label>'
+            '<label class="ye-formpop__check"><input type="checkbox" class="ye-findpop__case"> ' + t('Match case') + '</label>'
         this.findPop = pop
         this.findInput = pop.querySelector('.ye-findpop__q')
         this.replaceInput = pop.querySelector('.ye-findpop__r')
@@ -37,11 +52,11 @@ export const withFind = (Base) => class extends Base {
         })
         this.findInput.addEventListener('input', () => this.runFind())
         this.findCase.addEventListener('change', () => this.runFind())
-        const histKey = e => {
-            const k = e.key.toLowerCase()
+        function histKey (e) {
+            const k = (e.key || '').toLowerCase()
             if (!(e.ctrlKey || e.metaKey) || (k != 'z' && k != 'y')) return false
             e.preventDefault()
-            if (k == 'y' || e.shiftKey) this.redo(); else this.undo()
+            if (k == 'y' || e.shiftKey) editor.redo(); else editor.undo()
             e.currentTarget.focus()
             return true
         }
@@ -58,11 +73,6 @@ export const withFind = (Base) => class extends Base {
 
         const selText = (window.getSelection() && window.getSelection().toString()) || ''
         if (selText && selText.length < 120 && this.area.contains(window.getSelection().anchorNode)) this.findInput.value = selText
-
-        this.placePopupBelow(pop, (this.toolbar || this.area).getBoundingClientRect(), 'right')
-        this.revealPopup(pop)
-        this.findInput.focus(); this.findInput.select()
-        this.runFind()
     }
 
     hideFindPop () {
@@ -71,6 +81,10 @@ export const withFind = (Base) => class extends Base {
         this.findPop = null
         this.findState = null
         this.clearFindHighlights()
+        this.dismissFindPop(pop)
+    }
+
+    dismissFindPop (pop) {
         this.dismissPopup(pop)
     }
 
@@ -89,22 +103,28 @@ export const withFind = (Base) => class extends Base {
         const matches = q ? this.findMatches(q, cs) : []
         const index = Math.min(prev, Math.max(0, matches.length - 1))
         this.findState = { query: q, cs: cs, matches: matches, index: index }
-        if (this.findCount) this.findCount.textContent = matches.length ? (index + 1) + ' / ' + matches.length : (q ? 'No matches' : '')
+        if (this.findCount) this.findCount.textContent = matches.length ? (index + 1) + ' / ' + matches.length : (q ? this.t('No matches') : '')
         this.highlightMatches()
+    }
+
+    // Offsets from the original: lowercasing can change length ("İ")
+    matchesIn (text, q, cs) {
+        const out = []
+        const re = new RegExp(escapeRegExp(q), cs ? 'gu' : 'giu')
+        let m
+        while ((m = re.exec(text))) {
+            if (m[0].length == 0) { re.lastIndex++; continue }
+            out.push({ start: m.index, end: m.index + m[0].length })
+        }
+        return out
     }
 
     findMatches (q, cs) {
         const out = []
-        const needle = cs ? q : q.toLowerCase()
         const walker = document.createTreeWalker(this.area, NodeFilter.SHOW_TEXT, null)
         let n
         while ((n = walker.nextNode())) {
-            const text = cs ? n.nodeValue : n.nodeValue.toLowerCase()
-            let from = 0, idx
-            while ((idx = text.indexOf(needle, from)) != -1) {
-                out.push({ node: n, start: idx, end: idx + q.length })
-                from = idx + q.length
-            }
+            this.matchesIn(n.nodeValue, q, cs).forEach(m => out.push({ node: n, start: m.start, end: m.end }))
         }
         return out
     }
@@ -113,7 +133,7 @@ export const withFind = (Base) => class extends Base {
         const st = this.findState
         if (st == null || this.findCount == null) return
         const n = st.matches.length
-        this.findCount.textContent = n ? (st.index + 1) + ' / ' + n : (st.query ? 'No matches' : '')
+        this.findCount.textContent = n ? (st.index + 1) + ' / ' + n : (st.query ? this.t('No matches') : '')
         this.highlightMatches()
         if (!n) return
         const m = st.matches[st.index]
@@ -129,10 +149,10 @@ export const withFind = (Base) => class extends Base {
     }
 
     highlightMatches () {
-        if (typeof Highlight == 'undefined' || !window.CSS || !CSS.highlights) return
+        if (CssHighlight == null || !window.CSS || !CSS.highlights) return
         const st = this.findState
-        const all = new Highlight()
-        const current = new Highlight()
+        const all = new CssHighlight()
+        const current = new CssHighlight()
         if (st) {
             for (let i = 0; i < st.matches.length; i++) {
                 const m = st.matches[i]
@@ -185,7 +205,6 @@ export const withFind = (Base) => class extends Base {
         if (!q) return
         const cs = this.findCase.checked
         const rep = this.replaceInput.value
-        const needle = cs ? q : q.toLowerCase()
         const walker = document.createTreeWalker(this.area, NodeFilter.SHOW_TEXT, null)
         const nodes = []
         let n
@@ -193,18 +212,15 @@ export const withFind = (Base) => class extends Base {
         let count = 0
         nodes.forEach(node => {
             const text = node.nodeValue
-            const hay = cs ? text : text.toLowerCase()
-            let result = '', from = 0, idx, changed = false
-            while ((idx = hay.indexOf(needle, from)) != -1) {
-                result += text.slice(from, idx) + rep
-                from = idx + q.length
-                count++
-                changed = true
-            }
-            if (changed) { result += text.slice(from); node.nodeValue = result }
+            const found = this.matchesIn(text, q, cs)
+            if (found.length == 0) return
+            let result = '', from = 0
+            found.forEach(m => { result += text.slice(from, m.start) + rep; from = m.end })
+            node.nodeValue = result + text.slice(from)
+            count += found.length
         })
         if (count) { this.enforceLimit(); this.sync(); this.recordState() }
         this.runFind()
-        if (this.findCount) this.findCount.textContent = 'Replaced ' + count
+        if (this.findCount) this.findCount.textContent = this.t('Replaced') + ' ' + count
     }
 }

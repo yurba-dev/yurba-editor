@@ -7,7 +7,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1px;
+    gap: 2px;
     padding: 6px;
     background: var(--ye-surface-2);
     border-bottom: 1px solid var(--ye-border);
@@ -16,20 +16,20 @@
 
 .ye-toolbar__sep {
     width: 1px;
-    align-self: stretch;
-    margin: 3px 4px;
+    height: 20px;
+    margin: 0 4px;
     background: var(--ye-border);
 }
 
 .ye-toolbar__btn {
-    min-width: 30px;
-    height: 30px;
-    padding: 0 7px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid transparent;
-    border-radius: 7px;
+    border: 0;
+    border-radius: var(--yurba-radius-pill, 100px);
     background: transparent;
     color: var(--ye-text-soft);
     font-family: inherit;
@@ -37,30 +37,33 @@
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
-    transition: .15s;
+    transition: background-color .15s ease, color .15s ease;
 }
 
 .ye-toolbar__btn:hover {
-    background: var(--ye-surface);
-    border-color: var(--ye-border-strong);
+    background: var(--ye-hover);
     color: var(--ye-text);
+}
+
+.ye-toolbar__btn:focus-visible {
+    outline: 2px solid var(--ye-accent);
+    outline-offset: 2px;
 }
 
 .ye-toolbar__btn.is-active {
     background: var(--ye-accent-soft);
-    border-color: var(--ye-accent-soft);
     color: var(--ye-accent-ink);
 }
 
 .ye-toolbar__btn:disabled,
 .ye-toolbar__btn.is-disabled {
-    opacity: .4;
+    opacity: .5;
     cursor: default;
     pointer-events: none;
 }
 
 .ye-toolbar__btn--bold {
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .ye-toolbar__btn--italic {
@@ -76,21 +79,26 @@
 }
 
 .ye-toolbar__btn--wide {
-    min-width: 118px;
-    padding: 0 10px;
+    min-width: 128px;
+    padding: 0 12px 0 14px;
     gap: 6px;
     justify-content: space-between;
+    font-size: 14px;
+    font-weight: 500;
 }
 
 .ye-toolbar__btn--fore {
-    border-bottom: 3px solid var(--ye-accent);
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: underline 3px var(--ye-accent);
+    text-underline-offset: 3px;
 }
 
 .ye-toolbar__btn--back {
-    background: #fef08a;
-    color: #713f12;
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: underline 3px #facc15;
+    text-underline-offset: 3px;
 }
 
 /* Icons */
@@ -101,7 +109,7 @@
 }
 
 .ye-ico {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1;
     display: inline-flex;
     align-items: center;
@@ -109,8 +117,8 @@
 }
 
 svg.ye-ico {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.6;

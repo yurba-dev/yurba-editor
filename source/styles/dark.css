@@ -1,16 +1,21 @@
+/* Dark */
+
 @media (prefers-color-scheme: dark) {
     .ye:not(.ye--light) {
-        --ye-surface: #1e1f24;
+        --ye-surface: var(--yurba-main-color, #1e1f24);
         --ye-surface-2: #26272e;
-        --ye-border: #34363f;
-        --ye-border-strong: #434654;
-        --ye-text: #e5e7eb;
-        --ye-text-soft: #cbd0d8;
+        --ye-border: var(--yurba-border-color, #34363f);
+        --ye-border-strong: var(--yurba-fill-color, #434654);
+        --ye-text: var(--yurba-text-color, #e5e7eb);
+        --ye-text-soft: var(--yurba-text-color, #cbd0d8);
         --ye-muted: #9096a1;
-        --ye-accent: #60a5fa;
-        --ye-accent-ink: #93c5fd;
-        --ye-accent-soft: #1e3a5f;
-        --ye-danger: #f87171;
+        --ye-accent: var(--yurba-brand-color, #60a5fa);
+        --ye-accent-ink: var(--yurba-brand-color, #93c5fd);
+        --ye-accent-soft: var(--yurba-brand-color-opacity, #1e3a5f);
+        --ye-on-accent: var(--yurba-on-brand-color, #0f172a);
+        --ye-hover: var(--yurba-hover-color, #ffffff0f);
+        --ye-fill: var(--yurba-fill-color, #ffffff21);
+        --ye-danger: var(--yurba-red-color, #f87171);
         --ye-danger-soft: #3a1e1e;
     }
 }
@@ -26,6 +31,9 @@
     --ye-accent: #60a5fa;
     --ye-accent-ink: #93c5fd;
     --ye-accent-soft: #1e3a5f;
+    --ye-on-accent: #0f172a;
+    --ye-hover: #ffffff0f;
+    --ye-fill: #ffffff21;
     --ye-danger: #f87171;
     --ye-danger-soft: #3a1e1e;
 }

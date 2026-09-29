@@ -1,3 +1,5 @@
+import { IMAGE_OPS, LINK_OPS } from '../helpers/constants.js'
+
 export const withMenus = (Base) => class extends Base {
     showCtx (x, y, kind) {
         let pop = this.ctxPop
@@ -30,11 +32,13 @@ export const withMenus = (Base) => class extends Base {
     }
 
     openCtxAt (target, x, y) {
-        const near = sel => (target && target.closest ? target.closest(sel) : null)
+        function near (sel) {
+            return target && target.closest ? target.closest(sel) : null
+        }
         let anchor = near('a')
         if (anchor && this.area.contains(anchor)) { this.ctxAnchor = anchor; this.showCtx(x, y, 'link'); return true }
         let img = near('img')
-        if (img && this.area.contains(img)) { this.selectImage(img); this.ctxImg = img; this.showCtx(x, y, 'img'); return true }
+        if (img && this.area.contains(img) && !this.isGlyph(img)) { this.selectImage(img); this.ctxImg = img; this.showCtx(x, y, 'img'); return true }
         let cell = target
         while (cell && cell != this.area) {
             if (cell.nodeType == 1 && (cell.tagName == 'TD' || cell.tagName == 'TH')) break
@@ -84,11 +88,12 @@ export const withMenus = (Base) => class extends Base {
         pop.innerHTML = ''
         const wrap = document.createElement('div')
         wrap.className = 'ye-tableops'
-        const ops = [['edit', 'Edit link'], ['open', 'Open'], ['remove', 'Remove link']]
-        ops.forEach(op => {
+        wrap.setAttribute('role', 'menu')
+        LINK_OPS.forEach(op => {
             const b = document.createElement('button')
             b.type = 'button'
-            b.innerHTML = this.renderIcon(op[0]) + '<span>' + op[1] + '</span>'
+            b.setAttribute('role', 'menuitem')
+            b.innerHTML = this.renderIcon(op[0]) + '<span>' + this.t(op[1]) + '</span>'
             b.dataset.yeLink = op[0]
             if (op[0] == 'remove') b.className = 'ye-tableops__danger'
             wrap.appendChild(b)
@@ -100,16 +105,13 @@ export const withMenus = (Base) => class extends Base {
         pop.innerHTML = ''
         const wrap = document.createElement('div')
         wrap.className = 'ye-tableops'
-        const ops = [
-            ['align-left', 'Float left'], ['align-center', 'Center'], ['align-right', 'Float right'], ['align-none', 'Inline'],
-            ['|'],
-            ['alt', 'Alt text…'], ['img-del', 'Delete image']
-        ]
-        ops.forEach(op => {
+        wrap.setAttribute('role', 'menu')
+        IMAGE_OPS.forEach(op => {
             if (op[0] == '|') { const d = document.createElement('div'); d.className = 'ye-tableops__sep'; wrap.appendChild(d); return }
             const b = document.createElement('button')
             b.type = 'button'
-            b.innerHTML = this.renderIcon(op[0]) + '<span>' + op[1] + '</span>'
+            b.setAttribute('role', 'menuitem')
+            b.innerHTML = this.renderIcon(op[0]) + '<span>' + this.t(op[1]) + '</span>'
             b.dataset.yeImg = op[0]
             if (op[0] == 'img-del') b.className = 'ye-tableops__danger'
             wrap.appendChild(b)
@@ -124,6 +126,8 @@ export const withMenus = (Base) => class extends Base {
         const openEl = this.openMenuEl
         this.openMenuEl = null
         if (openEl && openEl._pop) {
+            const toggle = openEl.querySelector('[data-ye-menu-toggle]')
+            if (toggle) toggle.setAttribute('aria-expanded', 'false')
             const pop = openEl._pop
             setTimeout(() => { if (!pop.classList.contains('is-open')) openEl.appendChild(pop) }, 160)
         }

@@ -2,6 +2,7 @@ import { BLOCK_SEL } from '../helpers/constants.js'
 
 export const withSelection = (Base) => class extends Base {
     closestBlock (node) {
+        if (node == null || !this.area.contains(node)) return null
         while (node && node != this.area) {
             if (node.nodeType == 1 && node.matches(BLOCK_SEL)) return node
             node = node.parentNode
@@ -41,6 +42,7 @@ export const withSelection = (Base) => class extends Base {
         const sel = window.getSelection()
         if (sel == null || sel.rangeCount == 0) return null
         let node = sel.getRangeAt(0).startContainer
+        if (!this.area.contains(node)) return null
         while (node && node != this.area) {
             if (node.nodeType == 1 && (node.tagName == 'TD' || node.tagName == 'TH')) return node
             node = node.parentNode
@@ -52,6 +54,7 @@ export const withSelection = (Base) => class extends Base {
         const sel = window.getSelection()
         if (sel == null || sel.rangeCount == 0) return null
         let node = sel.getRangeAt(0).startContainer
+        if (!this.area.contains(node)) return null
         while (node && node != this.area) {
             if (node.nodeType == 1 && node.tagName == 'A') return node
             node = node.parentNode

@@ -1,3 +1,5 @@
+/* Area */
+
 .ye-body {
     flex: 1;
     min-height: 0;
@@ -15,6 +17,8 @@
 .ye-area:empty::before {
     content: attr(data-placeholder);
     color: var(--ye-muted);
+    pointer-events: none;
+    user-select: none;
 }
 
 .ye-area> :first-child {
@@ -109,10 +113,16 @@
     height: 12px;
     background: var(--ye-accent);
     border: 2px solid #fff;
-    border-radius: 3px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
     cursor: nwse-resize;
     display: none;
+    transition: transform .15s ease;
+}
+
+.ye-img-handle:hover,
+.ye-img-handle:active {
+    transform: scale(1.25);
 }
 
 .ye-area iframe {

@@ -5,6 +5,18 @@ export const withPrompt = (Base) => class extends Base {
         let pop = this.formPop
         const fresh = pop == null
         if (fresh) { pop = this.makePopup('ye-formpop'); this.formPop = pop }
+        const first = this.fillForm(pop, opts)
+        if (this.nextFormAnchor) {
+            this.placePopupAt(pop, this.nextFormAnchor.x, this.nextFormAnchor.y)
+            this.nextFormAnchor = null
+        } else {
+            this.placePopupBelow(pop, (this.toolbar || this.area).getBoundingClientRect(), 'left')
+        }
+        if (fresh) this.revealPopup(pop)
+        if (first) { try { first.focus({ preventScroll: true }) } catch (e) { first.focus() } if (first.select) first.select() }
+    }
+
+    fillForm (pop, opts) {
         pop.innerHTML = ''
         const inputs = (opts.fields || []).map(f => {
             if (f.type == 'checkbox') {
@@ -22,6 +34,7 @@ export const withPrompt = (Base) => class extends Base {
             inp.type = 'text'
             inp.className = 'ye-formpop__input'
             inp.placeholder = f.placeholder || ''
+            inp.setAttribute('aria-label', inp.placeholder)
             inp.value = f.value || ''
             pop.appendChild(inp)
             return inp
@@ -34,22 +47,23 @@ export const withPrompt = (Base) => class extends Base {
         const cancel = document.createElement('button')
         cancel.type = 'button'
         cancel.className = 'ye-formpop__btn'
-        cancel.textContent = 'Cancel'
+        cancel.textContent = this.t('Cancel')
         const ok = document.createElement('button')
         ok.type = 'button'
         ok.className = 'ye-formpop__btn ye-formpop__btn--ok'
-        ok.textContent = 'OK'
+        ok.textContent = this.t('OK')
         row.appendChild(cancel)
         row.appendChild(ok)
         pop.appendChild(row)
         const textInputs = inputs.filter(i => i.type != 'checkbox')
-        const submit = () => {
+        const editor = this
+        function submit () {
             const vals = inputs.map(i => i.type == 'checkbox' ? i.checked : i.value.trim())
-            this.restoreRange()
-            this.area.focus()
+            editor.restoreRange()
+            editor.area.focus()
             const msg = opts.onSubmit(vals)
             if (msg) { err.textContent = msg; err.classList.add('is-shown'); (textInputs[0] || inputs[0]).focus() }
-            else this.hideFormPop()
+            else editor.hideFormPop()
         }
         ok.addEventListener('mousedown', e => { e.preventDefault(); submit() })
         cancel.addEventListener('mousedown', e => { e.preventDefault(); this.hideFormPop() })
@@ -57,21 +71,17 @@ export const withPrompt = (Base) => class extends Base {
             if (e.key == 'Enter') { e.preventDefault(); submit() }
             else if (e.key == 'Escape') { e.preventDefault(); this.hideFormPop() }
         }))
-        if (this.nextFormAnchor) {
-            this.placePopupAt(pop, this.nextFormAnchor.x, this.nextFormAnchor.y)
-            this.nextFormAnchor = null
-        } else {
-            this.placePopupBelow(pop, (this.toolbar || this.area).getBoundingClientRect(), 'left')
-        }
-        if (fresh) this.revealPopup(pop)
-        const first = textInputs[0] || inputs[0]
-        if (first) { try { first.focus({ preventScroll: true }) } catch (e) { first.focus() } if (first.select) first.select() }
+        return textInputs[0] || inputs[0]
     }
 
     hideFormPop () {
         if (this.formPop == null) return
         const pop = this.formPop
         this.formPop = null
+        this.dismissFormPop(pop)
+    }
+
+    dismissFormPop (pop) {
         this.dismissPopup(pop)
     }
 }

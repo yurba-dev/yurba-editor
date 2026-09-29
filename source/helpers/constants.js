@@ -1,4 +1,4 @@
-export const DROP = { SCRIPT: 1, STYLE: 1, OBJECT: 1, EMBED: 1, NOSCRIPT: 1, TEMPLATE: 1, LINK: 1, META: 1, HEAD: 1, TITLE: 1, BASE: 1, FORM: 1, INPUT: 1, BUTTON: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1, SVG: 1, MATH: 1 }
+export const DROP = { SCRIPT: 1, STYLE: 1, OBJECT: 1, EMBED: 1, APPLET: 1, PARAM: 1, FRAME: 1, FRAMESET: 1, NOSCRIPT: 1, NOEMBED: 1, NOFRAMES: 1, XMP: 1, PLAINTEXT: 1, TEMPLATE: 1, LINK: 1, META: 1, HEAD: 1, TITLE: 1, BASE: 1, FORM: 1, INPUT: 1, BUTTON: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1, SVG: 1, MATH: 1 }
 
 export const ALLOWED = { P: 1, DIV: 1, BR: 1, HR: 1, STRONG: 1, B: 1, EM: 1, I: 1, U: 1, S: 1, SUB: 1, SUP: 1, A: 1, SPAN: 1, UL: 1, OL: 1, LI: 1, BLOCKQUOTE: 1, H1: 1, H2: 1, H3: 1, H4: 1, CODE: 1, PRE: 1, IMG: 1, IFRAME: 1, TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1 }
 
@@ -7,6 +7,8 @@ export const ATTRS = { a: ['href', 'title', 'target'], img: ['src', 'alt', 'titl
 export const STYLE_PROPS = { p: ['text-align', 'margin-left'], div: ['text-align', 'margin-left'], h1: ['text-align'], h2: ['text-align'], h3: ['text-align'], h4: ['text-align'], li: ['text-align'], blockquote: ['text-align', 'margin-left'], td: ['text-align'], th: ['text-align'], span: ['color', 'background-color'], img: ['width', 'height', 'float'], table: ['width'] }
 
 export const CLASS_ALLOWED = ['ye-table--no-grid']
+
+export const IFRAME_ALLOW = ['accelerometer', 'autoplay', 'clipboard-write', 'encrypted-media', 'fullscreen', 'gyroscope', 'picture-in-picture', 'web-share']
 
 export const EMBED_HOSTS = ['youtube.com', 'www.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com', 'player.vimeo.com']
 
@@ -75,6 +77,28 @@ export const SHORTCUTS = {
     strike: 'Ctrl+Shift+X', link: 'Ctrl+K', ul: 'Ctrl+Shift+8', ol: 'Ctrl+Shift+7', find: 'Ctrl+F'
 }
 
+export const LINK_OPS = [['edit', 'Edit link'], ['open', 'Open'], ['remove', 'Remove link']]
+
+export const IMAGE_OPS = [
+    ['align-left', 'Float left'], ['align-center', 'Center'], ['align-right', 'Float right'], ['align-none', 'Inline'],
+    ['|'],
+    ['alt', 'Alt text…'], ['img-del', 'Delete image']
+]
+
+export const TABLE_OPS = [
+    ['row-above', 'Row above'], ['row-below', 'Row below'], ['col-left', 'Col left'], ['col-right', 'Col right'],
+    ['|'],
+    ['cell-left', 'Align left'], ['cell-center', 'Align center'], ['cell-right', 'Align right'],
+    ['|'],
+    ['merge-right', 'Merge right'], ['merge-down', 'Merge down'], ['split', 'Split cell'],
+    ['|'],
+    ['row-del', 'Delete row'], ['col-del', 'Delete col'],
+    ['|'],
+    ['header', 'Header row'], ['grid', 'Toggle grid'], ['del', 'Delete table']
+]
+
+export const DANGER_OPS = ['remove', 'img-del', 'del']
+
 export const HEADINGS = { p: 'Paragraph', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3', h4: 'Heading 4' }
 
 export const TEXT_COLORS = ['#111827', '#374151', '#6b7280', '#9ca3af', '#dc2626', '#ea580c', '#d97706', '#16a34a', '#0d6efd', '#4f46e5', '#9333ea', '#db2777']
@@ -92,6 +116,9 @@ export const DEFAULT_TOOLBAR = [
     'source', 'fullscreen'
 ]
 
+// Context actions share icon keys with the toolbar; clear here empties the editor, so it gets its own
+export const CTX_ICON_KEYS = { selectAll: 'select-all', clear: 'clear-all', clearFormat: 'clear', lower: 'lowercase', upper: 'uppercase' }
+
 export const DEFAULT_CONTEXT_MENU = [
     { action: 'selectAll', icon: 'select_all', label: 'Select all' },
     { action: 'copy', icon: 'content_copy', label: 'Copy' },
@@ -99,6 +126,7 @@ export const DEFAULT_CONTEXT_MENU = [
     { action: 'clear', icon: 'delete_sweep', label: 'Clear' },
     { separator: true },
     {
+        key: 'formatting',
         icon: 'format_size',
         label: 'Formatting',
         children: [
@@ -114,6 +142,7 @@ export const DEFAULT_CONTEXT_MENU = [
         ]
     },
     {
+        key: 'case',
         icon: 'text_fields',
         label: 'Case',
         children: [

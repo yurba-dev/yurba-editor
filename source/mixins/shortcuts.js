@@ -1,5 +1,9 @@
 import { exec } from '../helpers/utils.js'
 
+function menuHas (items, action) {
+    return (items || []).some(i => i.action == action || menuHas(i.children, action))
+}
+
 export const withShortcuts = (Base) => class extends Base {
     markdownShortcut (e) {
         if (this.inline) return
@@ -8,22 +12,23 @@ export const withShortcuts = (Base) => class extends Base {
         if (sel == null || sel.rangeCount == 0 || !sel.isCollapsed) return
         const block = this.closestBlock(sel.anchorNode)
         if (block == null || block.matches('pre, li')) return
-        const before = block.textContent.slice(0, sel.anchorOffset)
-        if (before != block.textContent.trim()) return
-
-        const map = { '#': 'h1', '##': 'h2', '###': 'h3', '####': 'h4', '>': 'blockquote' }
-        let action = null
-        if (map[before]) action = () => this.formatBlock(map[before])
-        else if (before == '-' || before == '*') action = () => exec('insertUnorderedList')
-        else if (before == '1.') action = () => exec('insertOrderedList')
-        if (action == null) return
-
-        e.preventDefault()
         const r = document.createRange()
         r.setStart(block, 0)
         r.setEnd(sel.anchorNode, sel.anchorOffset)
+        const before = r.toString()
+        if (before != block.textContent.trim()) return
+
+        const blocks = { '#': 'h1', '##': 'h2', '###': 'h3', '####': 'h4', '>': 'blockquote' }
+        const lists = { '-': 'insertUnorderedList', '*': 'insertUnorderedList', '1.': 'insertOrderedList' }
+        // Own keys only: "constructor" must not match the prototype
+        const tag = blocks.hasOwnProperty(before) ? blocks[before] : null
+        const list = lists.hasOwnProperty(before) ? lists[before] : null
+        if (tag == null && list == null) return
+
+        e.preventDefault()
         r.deleteContents()
-        action()
+        if (tag) this.formatBlock(tag)
+        else exec(list)
     }
 
     shortcut (e) {
@@ -31,8 +36,8 @@ export const withShortcuts = (Base) => class extends Base {
         if (!e.altKey && !e.shiftKey) {
             if (k == 'z') { this.undo(); return true }
             if (k == 'y') { this.redo(); return true }
-            if (k == 'k') { this.nextFormAnchor = this.anchorUnder(this.root.querySelector('.ye-toolbar__btn[data-cmd="ye-link"]')); this.insertLink(); return true }
-            if (k == 'f') { this.openFindPop(); return true }
+            if (k == 'k' && this.offers('ye-link', 'link')) { this.nextFormAnchor = this.anchorUnder(this.root.querySelector('.ye-toolbar__btn[data-cmd="ye-link"]')); this.insertLink(); return true }
+            if (k == 'f' && this.root.classList.contains('ye--full') && this.offers('ye-find', 'find')) { this.openFindPop(); return true }
         }
         if (e.shiftKey && !e.altKey) {
             if (k == 'z') { this.redo(); return true }
@@ -45,6 +50,11 @@ export const withShortcuts = (Base) => class extends Base {
             if (map[e.code]) { this.formatBlock(map[e.code]); this.afterCmd(); return true }
         }
         return false
+    }
+
+    // Ctrl+F/K stay the browser's unless the editor offers them
+    offers (cmd, action) {
+        return this.root.querySelector('.ye-toolbar__btn[data-cmd="' + cmd + '"]') != null || (this.contextMenuEnabled && menuHas(this.contextMenuItems, action))
     }
 
     afterCmd () { this.sync(); this.updateStates() }

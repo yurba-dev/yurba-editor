@@ -1,10 +1,18 @@
+import { CTX_ICON_KEYS } from '../helpers/constants.js'
 import { exec } from '../helpers/utils.js'
+
+function byMouse (fn) {
+    return function (e) {
+        if (e.pointerType == 'mouse') fn()
+    }
+}
 
 export const withContext = (Base) => class extends Base {
     openTextMenu (x, y) {
         this.closeTextMenu()
         this.saveRange()
         const menu = this.makePopup()
+        menu.setAttribute('role', 'menu')
         this.buildCtxItems(this.contextMenuItems || [], menu)
         this.textPop = menu
         this.placePopupAt(menu, x, y)
@@ -23,6 +31,7 @@ export const withContext = (Base) => class extends Base {
             if (item.separator) {
                 const sep = document.createElement('div')
                 sep.className = 'y-dropdown__separator'
+                sep.setAttribute('role', 'separator')
                 container.appendChild(sep)
                 return
             }
@@ -30,26 +39,46 @@ export const withContext = (Base) => class extends Base {
             const btn = document.createElement('button')
             btn.type = 'button'
             btn.className = 'y-dropdown__item' + (hasChildren ? ' y-dropdown__item--has-children' : '')
+            btn.setAttribute('role', 'menuitem')
+            if (hasChildren) btn.setAttribute('aria-haspopup', 'true')
             if (item.danger) btn.classList.add('y-dropdown__item--danger')
             if (item.className) btn.classList.add(...item.className.split(' ').filter(Boolean))
+            const icon = this.ctxIcon(item)
             btn.innerHTML =
-                (item.icon ? '<span class="y-dropdown__item-icon"><span class="material-symbols-rounded">' + item.icon + '</span></span>' : '') +
-                '<span class="y-dropdown__item-label">' + (item.label || '') + '</span>' +
-                (hasChildren ? '<span class="y-dropdown__item-arrow">›</span>' : '')
+                (icon ? '<span class="y-dropdown__item-icon">' + icon + '</span>' : '') +
+                '<span class="y-dropdown__item-label">' + this.t(item.label || '') + '</span>' +
+                (hasChildren ? '<span class="y-dropdown__item-arrow">' + this.iconOr('submenu', '›') + '</span>' : '')
 
             if (hasChildren) {
                 const wrapper = document.createElement('div')
                 wrapper.className = 'y-dropdown__item-wrapper'
                 const submenu = document.createElement('div')
                 submenu.className = 'y-dropdown__menu y-dropdown__submenu is-hidden'
+                submenu.setAttribute('role', 'menu')
                 this.buildCtxItems(item.children, submenu)
+                const editor = this
                 let hideTimer = null
-                const show = () => { clearTimeout(hideTimer); this.positionSubmenu(btn, submenu); submenu.classList.remove('is-hidden') }
-                const hide = () => { hideTimer = setTimeout(() => submenu.classList.add('is-hidden'), 80) }
-                btn.addEventListener('mouseenter', show)
-                btn.addEventListener('mouseleave', hide)
-                submenu.addEventListener('mouseenter', () => clearTimeout(hideTimer))
-                submenu.addEventListener('mouseleave', hide)
+                function show () {
+                    clearTimeout(hideTimer)
+                    editor.positionSubmenu(btn, submenu)
+                    submenu.classList.remove('is-hidden')
+                }
+                function hide () {
+                    hideTimer = setTimeout(() => submenu.classList.add('is-hidden'), 80)
+                }
+                // Mouse only: emulated touch hover would open and close it at once
+                btn.addEventListener('pointerenter', byMouse(show))
+                btn.addEventListener('pointerleave', byMouse(hide))
+                submenu.addEventListener('pointerenter', byMouse(() => clearTimeout(hideTimer)))
+                submenu.addEventListener('pointerleave', byMouse(hide))
+                btn.addEventListener('mousedown', e => e.preventDefault())
+                btn.addEventListener('click', e => {
+                    e.stopPropagation()
+                    if (e.pointerType == 'mouse') return show()
+                    if (!submenu.classList.contains('is-hidden')) { clearTimeout(hideTimer); submenu.classList.add('is-hidden'); return }
+                    container.querySelectorAll(':scope > .y-dropdown__item-wrapper > .y-dropdown__submenu').forEach(s => s != submenu && s.classList.add('is-hidden'))
+                    show()
+                })
                 wrapper.appendChild(btn)
                 wrapper.appendChild(submenu)
                 container.appendChild(wrapper)
@@ -60,11 +89,18 @@ export const withContext = (Base) => class extends Base {
         })
     }
 
+    ctxIcon (item) {
+        const key = item.key || CTX_ICON_KEYS[item.action] || item.action
+        return this.iconOr(key, item.icon ? '<span class="material-symbols-rounded">' + item.icon + '</span>' : '')
+    }
+
     positionSubmenu (btn, sub) {
+        sub.classList.remove('y-dropdown__submenu--inline')
         sub.style.top = ''; sub.style.bottom = ''; sub.style.left = ''; sub.style.right = ''
         const pad = 8
         const t = btn.getBoundingClientRect()
         const m = sub.getBoundingClientRect()
+        if (t.right + m.width > window.innerWidth - pad && t.left - m.width < pad) { sub.classList.add('y-dropdown__submenu--inline'); return }
         if (t.right + m.width > window.innerWidth - pad) { sub.style.left = 'auto'; sub.style.right = '100%' }
         else { sub.style.left = '100%'; sub.style.right = 'auto' }
         if (t.top + m.height > window.innerHeight - pad) { sub.style.top = 'auto'; sub.style.bottom = '0' }
@@ -88,13 +124,13 @@ export const withContext = (Base) => class extends Base {
             return
         }
         if (action == 'copy') {
-            const text = (this.savedRange ? this.savedRange.toString() : '') || this.area.textContent
+            const text = (this.savedRange && !this.savedRange.collapsed ? this.plainText(this.savedRange) : '') || this.plainText(null)
             if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {})
             return
         }
         if (action == 'paste') {
             if (navigator.clipboard && navigator.clipboard.readText) {
-                navigator.clipboard.readText().then(text => { exec('insertText', text); this.enforceLimit(); this.sync() }).catch(() => {})
+                navigator.clipboard.readText().then(text => this.insertClipboard('', text)).catch(() => {})
             }
             return
         }
@@ -105,6 +141,12 @@ export const withContext = (Base) => class extends Base {
         if (action == 'link') { this.run('ye-link'); return }
         const map = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strikeThrough', code: 'ye-code' }
         if (map[action]) { this.run(map[action]); this.sync(); this.updateStates() }
+    }
+
+    plainText (range) {
+        const frag = range ? range.cloneContents() : this.area.cloneNode(true)
+        frag.querySelectorAll('img').forEach(img => { if (this.isGlyph(img)) img.replaceWith(img.getAttribute('alt') || '') })
+        return frag.textContent
     }
 
     transformCase (action) {

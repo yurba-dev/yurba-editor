@@ -1,4 +1,4 @@
-import { ATTRS } from '../helpers/constants.js'
+import { ATTRS, CLASS_ALLOWED } from '../helpers/constants.js'
 import { ancestorTag, exec, normalizeHex } from '../helpers/utils.js'
 
 export const withCommands = (Base) => class extends Base {
@@ -61,12 +61,18 @@ export const withCommands = (Base) => class extends Base {
         this.updateStates()
     }
 
+    // Bare text sits in the area itself, whose own style is never saved
+    styleBlocks () {
+        if (!this.inline && this.selectionBlocks().indexOf(this.area) != -1) exec('formatBlock', '<p>')
+        return this.selectionBlocks().filter(b => b != this.area)
+    }
+
     setAlign (value) {
-        this.selectionBlocks().forEach(b => { b.style.textAlign = value })
+        this.styleBlocks().forEach(b => { b.style.textAlign = value })
     }
 
     step (delta) {
-        this.selectionBlocks().forEach(b => {
+        this.styleBlocks().forEach(b => {
             const cur = parseInt(b.style.marginLeft, 10) || 0
             const next = Math.max(0, cur + delta)
             b.style.marginLeft = next ? next + 'px' : ''
@@ -77,7 +83,7 @@ export const withCommands = (Base) => class extends Base {
         const sel = window.getSelection()
         if (sel == null || sel.rangeCount == 0) return
         const range = sel.getRangeAt(0)
-        if (range.collapsed) return
+        if (range.collapsed || !this.area.contains(range.commonAncestorContainer)) return
         const existing = ancestorTag(range.commonAncestorContainer, tag.toUpperCase())
         if (existing) {
             const parent = existing.parentNode
@@ -103,15 +109,21 @@ export const withCommands = (Base) => class extends Base {
         let scope = range.commonAncestorContainer
         if (scope.nodeType != 1) scope = scope.parentNode
         if (scope == null) return
+        if (!this.area.contains(scope)) scope = this.area
         const els = [scope].concat(Array.prototype.slice.call(scope.querySelectorAll('*')))
         els.forEach(el => {
             if (el == this.area) return
             if (range.intersectsNode && !range.intersectsNode(el)) return
-            el.removeAttribute('class')
+            // Keep the glyph's class, or inline cleanup drops it
+            if (el.tagName == 'IMG' && this.isGlyph(el)) return
+            const kept = (el.getAttribute('class') || '').split(/\s+/).filter(c => CLASS_ALLOWED.indexOf(c) != -1)
+            if (kept.length) el.setAttribute('class', kept.join(' ')); else el.removeAttribute('class')
             el.removeAttribute('style')
             const keep = ATTRS[el.tagName.toLowerCase()] || []
             Array.prototype.slice.call(el.attributes).forEach(a => {
-                if (keep.indexOf(a.name.toLowerCase()) == -1) el.removeAttribute(a.name)
+                const name = a.name.toLowerCase()
+                if (name == 'class' || (this.allowData && name.indexOf('data-') == 0)) return
+                if (keep.indexOf(name) == -1) el.removeAttribute(a.name)
             })
         })
         this.sync()
