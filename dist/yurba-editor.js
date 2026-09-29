@@ -663,6 +663,7 @@ var __yurbaeditor__ = (() => {
     }
     ctxIcon(item) {
       const key = item.key || CTX_ICON_KEYS[item.action] || item.action;
+      if (item.icon && item.icon.includes("<")) return item.icon;
       return this.iconOr(key, item.icon ? '<span class="material-symbols-rounded">' + item.icon + "</span>" : "");
     }
     positionSubmenu(btn, sub) {

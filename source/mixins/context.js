@@ -91,6 +91,8 @@ export const withContext = (Base) => class extends Base {
 
     ctxIcon (item) {
         const key = item.key || CTX_ICON_KEYS[item.action] || item.action
+        // Markup of the item's own wins; a Material Symbols name gives way to the icons option
+        if (item.icon && item.icon.includes('<')) return item.icon
         return this.iconOr(key, item.icon ? '<span class="material-symbols-rounded">' + item.icon + '</span>' : '')
     }
 

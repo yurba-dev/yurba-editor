@@ -91,7 +91,7 @@ YurbaEditor.create({ field: 'textarea[name=body]' })
 | `strict` | boolean | `false` | Run `getHTML()`/`setHTML()` through the same allowlist as pastes, instead of the looser mode that keeps unknown tags and attributes |
 | `label` | string | placeholder | Accessible name of the editing area |
 | `labels` | object | - | UI strings by their English text, e.g. `{ 'Find': 'Найти' }` |
-| `contextMenu` | boolean \| array | built-in | Right-click menu; `false` disables, array customizes. Items are `{ label, icon, key, action \| onClick, children, separator, danger }` |
+| `contextMenu` | boolean \| array | built-in | Right-click menu; `false` disables, array customizes. Items are `{ label, icon, key, action \| onClick, children, separator, danger }`; `icon` is a Material Symbols name or your own HTML |
 | `embedHosts` | string[] | YouTube/Vimeo | Allowed `<iframe>` hosts |
 | `allowData` | boolean | `false` | Keep `data-*` attributes |
 | `allowClasses` | boolean | `false` | Keep all `class` attributes |
@@ -144,7 +144,7 @@ YurbaEditor.create({ field: '#body', icons: { bold: '<svg class="ye-ico" viewBox
 | `clear` `bold` `italic` `underline` `strike` `code` `link` `lowercase` `capitalize` `uppercase` `find` | Context menu items, shared with the toolbar key (`clear` is Clear formatting) | The item's `icon` |
 | `submenu` | Submenu arrow of the context menu. Standalone build only, in the `.ui` build YurbaUI draws it | `›` |
 
-A context menu item, built-in or custom, takes its key from `key`, else from `action`: `selectAll` uses `select-all`, `clear` uses `clear-all`, `clearFormat` uses `clear`, `lower` and `upper` use `lowercase` and `uppercase`, any other action is its own key. With no entry in `icons` it shows its `icon`.
+A context menu item, built-in or custom, takes its key from `key`, else from `action`: `selectAll` uses `select-all`, `clear` uses `clear-all`, `clearFormat` uses `clear`, `lower` and `upper` use `lowercase` and `uppercase`, any other action is its own key. With no entry in `icons` it shows its `icon`. An `icon` that is HTML rather than a symbol name is the item's own and shows whatever `icons` says.
 
 ## CSS variables
 

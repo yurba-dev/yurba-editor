@@ -455,7 +455,7 @@ YurbaEditor.create({ field: '#body', toolbar })</code></pre>
                     <div class="code-block">
                         <pre><code class="language-javascript">YurbaEditor.create({ field: '#body', contextMenu: false })</code></pre>
                     </div>
-                    <p class="note">Pass an array to replace the items. Each is <code>{ label, icon, key, action | onClick, children, separator, danger }</code> - <code>icon</code> is a Material Symbols name, <code>key</code> picks an entry of the <code>icons</code> option that replaces it (see <a href="#icons">Icons</a>), <code>action</code> a built-in id (<code>selectAll, copy, paste, clear, clearFormat, find, bold, italic, underline, strike, code, link, lower, capitalize, upper</code>), <code>onClick(editor)</code> runs custom code, <code>children</code> makes a submenu, and <code>danger</code> tints it red.</p>
+                    <p class="note">Pass an array to replace the items. Each is <code>{ label, icon, key, action | onClick, children, separator, danger }</code> - <code>icon</code> is a Material Symbols name or your own HTML (which wins over the <code>icons</code> option), <code>key</code> picks an entry of the <code>icons</code> option that replaces it (see <a href="#icons">Icons</a>), <code>action</code> a built-in id (<code>selectAll, copy, paste, clear, clearFormat, find, bold, italic, underline, strike, code, link, lower, capitalize, upper</code>), <code>onClick(editor)</code> runs custom code, <code>children</code> makes a submenu, and <code>danger</code> tints it red.</p>
                     <div class="code-block">
                         <pre><code class="language-javascript">YurbaEditor.create({
     field: '#body',
