@@ -130,12 +130,7 @@ export const withContext = (Base) => class extends Base {
             if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {})
             return
         }
-        if (action == 'paste') {
-            if (navigator.clipboard && navigator.clipboard.readText) {
-                navigator.clipboard.readText().then(text => this.insertClipboard('', text)).catch(() => {})
-            }
-            return
-        }
+        if (action == 'paste') { this.pasteFromClipboard(); return }
         if (action == 'clear') { this.setHTML(''); this.recordState(); return }
         if (action == 'clearFormat') { this.run('ye-clear'); this.updateStates(); return }
         if (action == 'find') { this.openFindPop(); return }
@@ -143,6 +138,24 @@ export const withContext = (Base) => class extends Base {
         if (action == 'link') { this.run('ye-link'); return }
         const map = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strikeThrough', code: 'ye-code' }
         if (map[action]) { this.run(map[action]); this.sync(); this.updateStates() }
+    }
+
+    // The async clipboard gives images only as blobs, and a copied file from the system not at all
+    pasteFromClipboard () {
+        const clip = navigator.clipboard
+        if (clip == null) return
+        const text = () => { if (clip.readText) clip.readText().then(t => this.insertClipboard('', t)).catch(() => {}) }
+        if (!clip.read || (!this.onFiles && !this.uploadEnabled)) { text(); return }
+        clip.read().then(async items => {
+            const files = []
+            for (const item of items) {
+                const type = item.types.indexOf('text/plain') == -1 && item.types.find(t => /^image\//.test(t))
+                if (type) files.push(new File([await item.getType(type)], 'image.' + type.split('/')[1].replace('jpeg', 'jpg'), { type }))
+            }
+            if (files.length == 0) { text(); return }
+            if (this.onFiles) this.onFiles(files, this)
+            else this.uploadFiles(files)
+        }).catch(text)
     }
 
     plainText (range) {

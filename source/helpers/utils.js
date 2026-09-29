@@ -36,6 +36,10 @@ export function imageFilesFrom (dt) {
     return out
 }
 
+export function filesFrom (dt) {
+    return dt && dt.files ? Array.prototype.slice.call(dt.files) : []
+}
+
 export function dtHasFiles (dt) {
     return dt && dt.types && Array.prototype.indexOf.call(dt.types, 'Files') != -1
 }

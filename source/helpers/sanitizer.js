@@ -42,6 +42,12 @@ export function filterStyle (style, allowed) {
     return out.join('; ')
 }
 
+// A glyph (an emoji the page itself put in, by glyphClass) may be a picture held in the page, such as
+// an animated emoji's first frame: data:image/ in an <img> only shows, it never runs
+function isGlyphData (el, name, value, opts) {
+    return name == 'src' && el.tagName == 'IMG' && !!opts.glyphClass && el.classList.contains(opts.glyphClass) && /^data:image\//i.test(value.trim())
+}
+
 export function cleanAttrs (el, hosts, strict, opts) {
     opts = opts || {}
     const tag = el.tagName.toLowerCase()
@@ -56,7 +62,7 @@ export function cleanAttrs (el, hosts, strict, opts) {
         if (name.indexOf('on') == 0) { el.removeAttribute(attrs[i].name); continue }
         if (name == 'style' && opts.stripStyle) { el.removeAttribute('style'); continue }
         if (DROP_ATTRS.indexOf(name) != -1) { el.removeAttribute(attrs[i].name); continue }
-        if (URL_ATTRS.indexOf(name) != -1 && !isSafeUrl(value)) { el.removeAttribute(attrs[i].name); continue }
+        if (URL_ATTRS.indexOf(name) != -1 && !isSafeUrl(value) && !isGlyphData(el, name, value, opts)) { el.removeAttribute(attrs[i].name); continue }
         if (name == 'allow') {
             const kept = value.split(';').map(v => v.trim()).filter(v => IFRAME_ALLOW.indexOf(v.split(/\s+/)[0].toLowerCase()) != -1)
             if (tag == 'iframe' && kept.length) el.setAttribute('allow', kept.join('; ')); else el.removeAttribute(attrs[i].name)
@@ -87,7 +93,8 @@ export function cleanAttrs (el, hosts, strict, opts) {
         }
     }
 
-    if (tag == 'img' && !isSafeUrl(el.getAttribute('src') || '')) return false
+    const src = el.getAttribute('src') || ''
+    if (tag == 'img' && !isSafeUrl(src) && !isGlyphData(el, 'src', src, opts)) return false
     if (tag == 'iframe' && !isSafeEmbed(el.getAttribute('src') || '', hosts)) return false
     if (tag == 'a' && el.getAttribute('href')) {
         if ((el.getAttribute('target') || '').toLowerCase() == '_self') {

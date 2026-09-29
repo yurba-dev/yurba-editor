@@ -76,6 +76,7 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
         this.embedHosts = options.embedHosts || EMBED_HOSTS
         this.uploadUrl = options.uploadUrl || null
         this.onImageUpload = typeof options.onImageUpload == 'function' ? options.onImageUpload : null
+        this.onFiles = typeof options.onFiles == 'function' ? options.onFiles : null
         this.uploadField = options.uploadField || 'file'
         this.uploadHeaders = options.uploadHeaders || {}
         this.maxImageKb = options.maxImageKb || 0

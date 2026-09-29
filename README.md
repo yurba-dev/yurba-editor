@@ -83,7 +83,7 @@ YurbaEditor.create({ field: 'textarea[name=body]' })
 | `toolbar` | string[] \| false | full set | Toolbar tokens; `'\|'` is a separator; `false` hides it |
 | `footer` | boolean | `true` | `false` hides the footer (brand + count) |
 | `inline` | boolean | `false` | Enter inserts `<br>` (unless an earlier `keydown` listener called `preventDefault()`), blocks are flattened and images are dropped (except `glyphClass` ones) |
-| `glyphClass` | string | - | Images with this class act as text glyphs (e.g. emoji): kept by the sanitizer and in inline mode, not selectable or resizable |
+| `glyphClass` | string | - | Images with this class act as text glyphs (e.g. emoji): kept by the sanitizer and in inline mode, not selectable or resizable. Their `src` may also be a `data:image/` URL, such as an animated emoji's first frame drawn in the page |
 | `placeholder` | string | `'Start writing…'` | Empty-state text |
 | `minHeight` | number | `160` | Min editing height (px) |
 | `height` | number | - | Max height before scroll (px) |
@@ -97,6 +97,7 @@ YurbaEditor.create({ field: 'textarea[name=body]' })
 | `allowClasses` | boolean | `false` | Keep all `class` attributes |
 | `uploadUrl` | string | - | Image upload endpoint (enables the upload UI) |
 | `onImageUpload` | function | - | `file => Promise<url>` custom uploader |
+| `onFiles` | function | - | `(files, editor) => {}` takes files pasted with Ctrl+V or the context menu's Paste instead of the editor, e.g. to attach them to a message. The menu's Paste can only bring images: browsers don't give pages a file copied in the system file manager |
 | `onChange` | function | - | `html => {}` on change |
 | `onCount` | function | - | `({ words, chars }) => {}` on count change |
 | `icons` | object | built-in | Override built-in icons, see [Icons](#icons) |

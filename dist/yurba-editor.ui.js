@@ -289,6 +289,9 @@ var __yurbaeditor__ = (() => {
     }
     return out.join("; ");
   }
+  function isGlyphData(el, name, value, opts) {
+    return name == "src" && el.tagName == "IMG" && !!opts.glyphClass && el.classList.contains(opts.glyphClass) && /^data:image\//i.test(value.trim());
+  }
   function cleanAttrs(el, hosts, strict, opts) {
     opts = opts || {};
     const tag = el.tagName.toLowerCase();
@@ -310,7 +313,7 @@ var __yurbaeditor__ = (() => {
         el.removeAttribute(attrs[i].name);
         continue;
       }
-      if (URL_ATTRS.indexOf(name) != -1 && !isSafeUrl(value)) {
+      if (URL_ATTRS.indexOf(name) != -1 && !isSafeUrl(value) && !isGlyphData(el, name, value, opts)) {
         el.removeAttribute(attrs[i].name);
         continue;
       }
@@ -347,7 +350,8 @@ var __yurbaeditor__ = (() => {
         el.removeAttribute("style");
       }
     }
-    if (tag == "img" && !isSafeUrl(el.getAttribute("src") || "")) return false;
+    const src = el.getAttribute("src") || "";
+    if (tag == "img" && !isSafeUrl(src) && !isGlyphData(el, "src", src, opts)) return false;
     if (tag == "iframe" && !isSafeEmbed(el.getAttribute("src") || "", hosts)) return false;
     if (tag == "a" && el.getAttribute("href")) {
       if ((el.getAttribute("target") || "").toLowerCase() == "_self") {
@@ -457,6 +461,9 @@ var __yurbaeditor__ = (() => {
       for (let i = 0; i < files.length; i++) if (/^image\//.test(files[i].type)) out.push(files[i]);
     }
     return out;
+  }
+  function filesFrom(dt) {
+    return dt && dt.files ? Array.prototype.slice.call(dt.files) : [];
   }
   function dtHasFiles(dt) {
     return dt && dt.types && Array.prototype.indexOf.call(dt.types, "Files") != -1;
@@ -722,10 +729,7 @@ var __yurbaeditor__ = (() => {
         return;
       }
       if (action == "paste") {
-        if (navigator.clipboard && navigator.clipboard.readText) {
-          navigator.clipboard.readText().then((text) => this.insertClipboard("", text)).catch(() => {
-          });
-        }
+        this.pasteFromClipboard();
         return;
       }
       if (action == "clear") {
@@ -756,6 +760,32 @@ var __yurbaeditor__ = (() => {
         this.sync();
         this.updateStates();
       }
+    }
+    // The async clipboard gives images only as blobs, and a copied file from the system not at all
+    pasteFromClipboard() {
+      const clip = navigator.clipboard;
+      if (clip == null) return;
+      const text = () => {
+        if (clip.readText) clip.readText().then((t) => this.insertClipboard("", t)).catch(() => {
+        });
+      };
+      if (!clip.read || !this.onFiles && !this.uploadEnabled) {
+        text();
+        return;
+      }
+      clip.read().then(async (items) => {
+        const files = [];
+        for (const item of items) {
+          const type = item.types.indexOf("text/plain") == -1 && item.types.find((t) => /^image\//.test(t));
+          if (type) files.push(new File([await item.getType(type)], "image." + type.split("/")[1].replace("jpeg", "jpg"), { type }));
+        }
+        if (files.length == 0) {
+          text();
+          return;
+        }
+        if (this.onFiles) this.onFiles(files, this);
+        else this.uploadFiles(files);
+      }).catch(text);
     }
     plainText(range) {
       const frag = range ? range.cloneContents() : this.area.cloneNode(true);
@@ -2394,6 +2424,12 @@ var __yurbaeditor__ = (() => {
       area.addEventListener("paste", (e) => {
         const data = e.clipboardData || window.clipboardData;
         if (data == null) return;
+        const files = this.onFiles && !data.getData("text/plain") ? filesFrom(data) : [];
+        if (files.length) {
+          e.preventDefault();
+          this.onFiles(files, this);
+          return;
+        }
         const imgs = this.uploadEnabled ? imageFilesFrom(data) : [];
         if (imgs.length) {
           e.preventDefault();
@@ -2811,6 +2847,7 @@ var __yurbaeditor__ = (() => {
       this.embedHosts = options.embedHosts || EMBED_HOSTS;
       this.uploadUrl = options.uploadUrl || null;
       this.onImageUpload = typeof options.onImageUpload == "function" ? options.onImageUpload : null;
+      this.onFiles = typeof options.onFiles == "function" ? options.onFiles : null;
       this.uploadField = options.uploadField || "file";
       this.uploadHeaders = options.uploadHeaders || {};
       this.maxImageKb = options.maxImageKb || 0;

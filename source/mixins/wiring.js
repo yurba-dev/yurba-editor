@@ -1,4 +1,4 @@
-import { cpLen, dtHasFiles, exec, imageFilesFrom, rangeFromPoint } from '../helpers/utils.js'
+import { cpLen, dtHasFiles, exec, filesFrom, imageFilesFrom, rangeFromPoint } from '../helpers/utils.js'
 
 export const withWiring = (Base) => class extends Base {
     wire () {
@@ -91,6 +91,9 @@ export const withWiring = (Base) => class extends Base {
         area.addEventListener('paste', e => {
             const data = e.clipboardData || window.clipboardData
             if (data == null) return
+            // Office apps put a picture of copied text next to the text itself
+            const files = this.onFiles && !data.getData('text/plain') ? filesFrom(data) : []
+            if (files.length) { e.preventDefault(); this.onFiles(files, this); return }
             const imgs = this.uploadEnabled ? imageFilesFrom(data) : []
             if (imgs.length) { e.preventDefault(); this.uploadFiles(imgs); return }
             e.preventDefault()
