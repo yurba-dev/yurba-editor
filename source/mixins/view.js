@@ -7,10 +7,15 @@ export const withView = (Base) => class extends Base {
     }
 
     toggleSource () {
+        // Pictures still uploading are previews the HTML view cannot hold: they would come back empty
+        if (!this.root.classList.contains('ye--source') && this.uploading) return
         this.deselectImage()
+        this.flushHistory()
+        // Read before the switch: in the HTML view getHTML() reads the (still empty) HTML field
+        const html = this.root.classList.contains('ye--source') ? '' : this.getHTML()
         const on = this.root.classList.toggle('ye--source')
         if (on) {
-            this.sourceView.value = this.getHTML()
+            this.sourceView.value = html
             this.sourceView.hidden = false
             this.area.hidden = true
         } else {
@@ -19,6 +24,9 @@ export const withView = (Base) => class extends Base {
             this.sourceView.hidden = true
             this.enforceLimit(true)
             this.sync()
+            // What was changed in the HTML is one step back
+            this.recordState()
+            this.area.focus({ preventScroll: true })
         }
         this.markActive('ye-source-toggle', on)
     }
@@ -26,6 +34,13 @@ export const withView = (Base) => class extends Base {
     toggleFull () {
         const on = this.root.classList.toggle('ye--full')
         document.body.classList.toggle('ye-lock', on)
+        // A height set by the options would stop the text short of the screen and its scroll
+        if (on) {
+            this.savedMaxHeight = this.area.style.maxHeight
+            this.area.style.maxHeight = ''
+        } else if (this.savedMaxHeight) {
+            this.area.style.maxHeight = this.savedMaxHeight
+        }
         this.markActive('ye-fullscreen', on)
     }
 

@@ -11,40 +11,50 @@ export const withTables = (Base) => class extends Base {
             html += '</tr>'
         }
         html += '</tbody></table><p><br></p>'
+        this.flushHistory()
         exec('insertHTML', html)
+        // Typing goes on in the first cell, not in the line below the table
+        const sel = window.getSelection()
+        const line = sel.rangeCount ? this.closestBlock(sel.anchorNode) : null
+        const table = line && line.previousElementSibling
+        const cell = table && table.tagName == 'TABLE' ? table.querySelector('th, td') : null
+        if (cell) {
+            const r = document.createRange()
+            r.setStart(cell, 0)
+            r.collapse(true)
+            sel.removeAllRanges()
+            sel.addRange(r)
+        }
+        this.sync()
+        this.recordState()
     }
 
+    // One step of the history, apart from the typing before it
     tableOp (op) {
+        if (this.currentCell() == null) return
+        this.flushHistory()
+        this.runTableOp(op)
+        this.sync()
+        this.recordState()
+    }
+
+    runTableOp (op) {
         const cell = this.currentCell()
         if (cell == null) return
-        const row = cell.parentNode
         const table = ancestorTag(cell, 'TABLE')
-        const idx = Array.prototype.indexOf.call(row.children, cell)
+        // Rows and columns as they are seen, merged cells included; a table inside a cell is its own
+        const grid = this.tableGrid(table)
+        const pos = this.findCellPos(grid, cell)
+        if (pos == null) return
 
         if (op == 'row-above' || op == 'row-below') {
-            const clone = row.cloneNode(true)
-            const cells = clone.children
-            for (let i = 0; i < cells.length; i++) {
-                const fresh = document.createElement('td')
-                fresh.innerHTML = '<br>'
-                clone.replaceChild(fresh, cells[i])
-            }
-            row.parentNode.insertBefore(clone, op == 'row-above' ? row : row.nextSibling)
+            this.insertRow(table, grid, op == 'row-above' ? pos.r : pos.r + (cell.rowSpan || 1))
         } else if (op == 'col-left' || op == 'col-right') {
-            const rows = table.querySelectorAll('tr')
-            for (let i = 0; i < rows.length; i++) {
-                const ref = rows[i].children[idx]
-                const fresh = document.createElement(ref && ref.tagName == 'TH' ? 'th' : 'td')
-                fresh.innerHTML = '<br>'
-                rows[i].insertBefore(fresh, op == 'col-left' ? ref : (ref ? ref.nextSibling : null))
-            }
+            this.insertCol(table, grid, op == 'col-left' ? pos.c : pos.c + (cell.colSpan || 1))
         } else if (op == 'row-del') {
-            if (table.querySelectorAll('tr').length > 1) row.remove()
+            if (table.rows.length > 1) this.deleteRow(table, grid, pos.r)
         } else if (op == 'col-del') {
-            const rows = table.querySelectorAll('tr')
-            for (let i = 0; i < rows.length; i++) {
-                if (rows[i].children.length > 1 && rows[i].children[idx]) rows[i].children[idx].remove()
-            }
+            if (grid.some(r => r && r.length > 1)) this.deleteCol(grid, pos.c)
         } else if (op == 'header') {
             const first = table.querySelector('tr')
             if (first == null) return
@@ -67,8 +77,46 @@ export const withTables = (Base) => class extends Base {
         } else if (op == 'grid') {
             table.classList.toggle('ye-table--no-grid')
         } else if (op == 'del') {
+            const next = table.nextElementSibling || table.previousElementSibling
             table.remove()
+            if (next && this.area.contains(next)) this.caretToEnd(next)
         }
+        // The caret went with its cell: it stays at the same place in the grid, so the next press still works
+        if (!cell.isConnected && table.isConnected) {
+            const left = this.tableGrid(table)
+            const row = left[Math.min(pos.r, left.length - 1)] || []
+            const near = row[Math.min(pos.c, row.length - 1)]
+            if (near) this.caretToEnd(near)
+        }
+    }
+
+    // Cells in reading order, each once, where it starts
+    cellOrder (grid) {
+        const out = []
+        grid.forEach(row => (row || []).forEach(cell => { if (cell && out.indexOf(cell) == -1) out.push(cell) }))
+        return out
+    }
+
+    caretToEnd (box) {
+        const range = document.createRange()
+        const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null)
+        let last = null
+        let n
+        while ((n = walker.nextNode())) if (n.nodeValue.trim() != '') last = n
+        if (last) {
+            range.setStart(last, last.nodeValue.length)
+        } else {
+            // An empty cell holds a <br> (or a <p><br></p>): the caret goes before it, not onto a second line
+            let inner = box
+            while (inner.firstElementChild && inner.firstElementChild.matches('p,div,h1,h2,h3,h4,blockquote,pre')) inner = inner.firstElementChild
+            range.setStart(inner, 0)
+        }
+        range.collapse(true)
+        const sel = window.getSelection()
+        sel.removeAllRanges()
+        sel.addRange(range)
+        const el = last ? last.parentNode : box
+        if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     }
 
     tableGrid (table) {
@@ -101,27 +149,28 @@ export const withTables = (Base) => class extends Base {
         return null
     }
 
+    // Only a neighbour of the same height (or width) that starts on the same line joins in, so the grid stays a rectangle
+    mergeTarget (grid, cell, pos, dir) {
+        const cs = cell.colSpan || 1
+        const rs = cell.rowSpan || 1
+        const right = dir == 'right'
+        const other = right ? (grid[pos.r] || [])[pos.c + cs] : (grid[pos.r + rs] || [])[pos.c]
+        if (other == null || other == cell) return null
+        const op = this.findCellPos(grid, other)
+        if (right && (op.r != pos.r || op.c != pos.c + cs || (other.rowSpan || 1) != rs)) return null
+        if (!right && (op.r != pos.r + rs || op.c != pos.c || (other.colSpan || 1) != cs)) return null
+        return other
+    }
+
     mergeCell (cell, dir) {
         const table = ancestorTag(cell, 'TABLE')
         const grid = this.tableGrid(table)
         const pos = this.findCellPos(grid, cell)
         if (pos == null) return
-        const cs = cell.colSpan || 1
-        const rs = cell.rowSpan || 1
-        let other = null
-        if (dir == 'right') {
-            other = (grid[pos.r] || [])[pos.c + cs]
-            if (other == null || other == cell) return
-            const op = this.findCellPos(grid, other)
-            if (op.r != pos.r || op.c != pos.c + cs || (other.rowSpan || 1) != rs) return
-            cell.colSpan = cs + (other.colSpan || 1)
-        } else {
-            other = (grid[pos.r + rs] || [])[pos.c]
-            if (other == null || other == cell) return
-            const op = this.findCellPos(grid, other)
-            if (op.r != pos.r + rs || op.c != pos.c || (other.colSpan || 1) != cs) return
-            cell.rowSpan = rs + (other.rowSpan || 1)
-        }
+        const other = this.mergeTarget(grid, cell, pos, dir)
+        if (other == null) return
+        if (dir == 'right') cell.colSpan = (cell.colSpan || 1) + (other.colSpan || 1)
+        else cell.rowSpan = (cell.rowSpan || 1) + (other.rowSpan || 1)
         const otherHtml = other.innerHTML.replace(/^(\s|<br\s*\/?>)+$/i, '')
         if (otherHtml) cell.innerHTML = cell.innerHTML.replace(/^(<br\s*\/?>)+$/i, '') + ' ' + otherHtml
         other.parentNode.removeChild(other)
@@ -137,8 +186,8 @@ export const withTables = (Base) => class extends Base {
         if (pos == null) return
         const rows = table.rows
         const tag = cell.tagName.toLowerCase()
-        cell.colSpan = 1
-        cell.rowSpan = 1
+        this.setSpan(cell, 'colspan', 1)
+        this.setSpan(cell, 'rowspan', 1)
         for (let dr = 0; dr < rs; dr++) {
             for (let dc = 0; dc < cs; dc++) {
                 if (dr == 0 && dc == 0) continue
@@ -154,6 +203,85 @@ export const withTables = (Base) => class extends Base {
                 grid[rr][cc] = fresh
             }
         }
+    }
+
+    // A span of one is no span: the attribute goes rather than staying as colspan="1"
+    setSpan (cell, name, n) {
+        if (n > 1) cell.setAttribute(name, n)
+        else cell.removeAttribute(name)
+    }
+
+    freshCell (tag) {
+        const fresh = document.createElement(tag)
+        fresh.innerHTML = '<br>'
+        return fresh
+    }
+
+    // A cell that starts in a row goes before the first one there that stands right of it
+    placeCell (tr, grid, r, c, fresh) {
+        const starts = this.rowStarts(grid, r)
+        let ref = null
+        for (let i = 0; i < starts.length; i++) { if (starts[i].c >= c) { ref = starts[i].cell; break } }
+        tr.insertBefore(fresh, ref)
+    }
+
+    insertRow (table, grid, at) {
+        const rows = table.rows
+        const width = Math.max(...grid.map(r => (r || []).length))
+        const tr = document.createElement('tr')
+        const grown = []
+        for (let c = 0; c < width; c++) {
+            const above = (grid[at - 1] || [])[c]
+            // A cell spanning over the new row just grows into it
+            if (above && (grid[at] || [])[c] == above) {
+                if (grown.indexOf(above) == -1) { above.rowSpan = (above.rowSpan || 1) + 1; grown.push(above) }
+                continue
+            }
+            tr.appendChild(this.freshCell('td'))
+        }
+        if (at < rows.length) rows[at].parentNode.insertBefore(tr, rows[at])
+        else rows[rows.length - 1].parentNode.appendChild(tr)
+    }
+
+    insertCol (table, grid, at) {
+        const rows = table.rows
+        const grown = []
+        for (let r = 0; r < rows.length; r++) {
+            const left = (grid[r] || [])[at - 1]
+            const right = (grid[r] || [])[at]
+            if (left && left == right) {
+                if (grown.indexOf(left) == -1) { left.colSpan = (left.colSpan || 1) + 1; grown.push(left) }
+                continue
+            }
+            const beside = right || left
+            this.placeCell(rows[r], grid, r, at, this.freshCell(beside && beside.tagName == 'TH' ? 'th' : 'td'))
+        }
+    }
+
+    deleteRow (table, grid, r) {
+        const tr = table.rows[r]
+        const next = table.rows[r + 1]
+        const seen = []
+        ;(grid[r] || []).forEach((cell, c) => {
+            if (cell == null || seen.indexOf(cell) != -1) return
+            seen.push(cell)
+            if ((cell.rowSpan || 1) < 2) return
+            this.setSpan(cell, 'rowspan', cell.rowSpan - 1)
+            // A merged cell that starts here moves down to the row it still covers
+            if (cell.parentNode == tr && next) this.placeCell(next, grid, r + 1, c, cell)
+        })
+        tr.remove()
+    }
+
+    deleteCol (grid, c) {
+        const seen = []
+        grid.forEach(row => {
+            const cell = (row || [])[c]
+            if (cell == null || seen.indexOf(cell) != -1) return
+            seen.push(cell)
+            if ((cell.colSpan || 1) > 1) this.setSpan(cell, 'colspan', cell.colSpan - 1)
+            else cell.remove()
+        })
     }
 
     rowStarts (grid, rr) {

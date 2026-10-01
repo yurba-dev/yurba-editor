@@ -1,4 +1,7 @@
-import { cpLen, dtHasFiles, exec, filesFrom, imageFilesFrom, rangeFromPoint } from '../helpers/utils.js'
+import { cpForward, cpLen, dtHasFiles, exec, filesFrom, imageFilesFrom, rangeFromPoint, shortcutKey } from '../helpers/utils.js'
+
+// Shared by every editor on the page: the one a Ctrl+Z outside the text belongs to
+let lastEditor = null
 
 export const withWiring = (Base) => class extends Base {
     wire () {
@@ -6,6 +9,14 @@ export const withWiring = (Base) => class extends Base {
 
         area.addEventListener('beforeinput', e => {
             const t = e.inputType || ''
+            // The browser's own undo knows typing only, not what the editor changed itself (a table taken out,
+            // a picture resized): the editor's history answers it, from the Edit menu or a phone keyboard too
+            if (t == 'historyUndo' || t == 'historyRedo') {
+                e.preventDefault()
+                if (t == 'historyUndo') this.undo()
+                else this.redo()
+                return
+            }
             this.inputBoundary = (t == 'insertText' && /\s/.test(e.data || '')) ||
                 t == 'insertParagraph' || t == 'insertLineBreak' ||
                 t == 'insertFromPaste' || t == 'insertFromDrop'
@@ -14,11 +25,18 @@ export const withWiring = (Base) => class extends Base {
             let add = 1
             if ((t == 'insertText' || t == 'insertReplacementText') && e.data != null) add = cpLen(e.data)
             else if (t == 'insertParagraph' || t == 'insertLineBreak') add = 0
-            if (add > this.roomLeft()) e.preventDefault()
+            const room = this.roomLeft()
+            if (add <= room) return
+            e.preventDefault()
+            // A word at once (autocomplete, dictation, an IME) goes in as far as there is room, not at all
+            if (t == 'insertText' && e.data && room > 0) exec('insertText', e.data.slice(0, cpForward(e.data, 0, room)))
         })
-        area.addEventListener('input', () => {
+        area.addEventListener('input', e => {
             // A dragged-in image lands without a paste event
-            if (this.inline) area.querySelectorAll('img').forEach(img => { if (!this.isGlyph(img)) img.remove() })
+            if (this.inline) area.querySelectorAll('img, iframe').forEach(el => { if (!this.isGlyph(el)) el.remove() })
+            // Joining a paragraph to a heading, Chrome keeps the paragraph's look in a <span style="font-size">
+            if (/^delete/.test(e.inputType || '')) this.dropComputedSpans()
+            this.dropForeignImages()
             this.enforceLimit()
             this.sync()
             if (this.inputBoundary) { this.inputBoundary = false; this.recordState() }
@@ -33,16 +51,27 @@ export const withWiring = (Base) => class extends Base {
         area.addEventListener('keyup', () => this.updateStates())
         area.addEventListener('mouseup', () => this.updateStates())
         area.addEventListener('keydown', e => {
-            if (this.inline && e.key == 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            // Ctrl+Z brings the caret back to where the edit started, not where the last step ended
+            this.noteCaret()
+            if (this.inline && e.key == 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
                 // A host handler (e.g. send) may have taken Enter first
                 if (!e.defaultPrevented) { e.preventDefault(); exec('insertLineBreak') }
                 return
             }
+            if (this.imageKey(e)) return
+            if (this.captionKey(e)) return
+            if (e.key == 'Tab' && !e.defaultPrevented) {
+                // What was typed just before is a step of its own, apart from the new row or level
+                this.flushHistory()
+                if (this.tabKey(e)) { e.preventDefault(); this.recordState(); return }
+            }
             this.markdownShortcut(e)
             if ((e.ctrlKey || e.metaKey) && this.shortcut(e)) { e.preventDefault(); return }
             if (e.key == 'Escape') {
-                this.hideTableCtx(); this.closeTextMenu(); this.hideFormPop(); this.hideFindPop(); this.deselectImage()
-                if (this.root.classList.contains('ye--full')) this.toggleFull()
+                // One Escape closes one thing: an open menu first, the full screen only after
+                const busy = this.ctxPop || this.textPop || this.textMenu || this.formPop || this.findPop || this.selectedImg || this.openMenuEl
+                this.hideTableCtx(); this.closeTextMenu(); this.hideFormPop(); this.hideFindPop(); this.deselectImage(); this.closeMenus()
+                if (!busy && this.root.classList.contains('ye--full')) this.toggleFull()
             }
         })
 
@@ -52,8 +81,15 @@ export const withWiring = (Base) => class extends Base {
 
         area.addEventListener('click', e => {
             const img = e.target && e.target.closest ? e.target.closest('img') : null
-            if (img && area.contains(img) && !this.isGlyph(img)) this.selectImage(img)
-            else this.deselectImage()
+            if (img && area.contains(img) && !this.isGlyph(img)) {
+                this.selectImage(img)
+                // The caret leaves the words it may have held and stands after the picture
+                const range = document.createRange()
+                range.setStartAfter(img)
+                range.collapse(true)
+                window.getSelection().removeAllRanges()
+                window.getSelection().addRange(range)
+            } else this.deselectImage()
         })
 
         let lpTimer = null, lpStart = null
@@ -115,7 +151,29 @@ export const withWiring = (Base) => class extends Base {
             this.insertClipboard(html, text)
         })
 
+        area.addEventListener('focus', () => { lastEditor = this })
+
+        // The editor worked in last answers Ctrl+Z / Ctrl+Y also when focus left the text for a menu, a bar,
+        // a dialog or the page itself; a field of its own keeps its own undo
+        this.onUndoKey = e => {
+            if (lastEditor != this || !(e.ctrlKey || e.metaKey) || e.altKey || e.defaultPrevented) return
+            const k = shortcutKey(e)
+            if (k != 'z' && k != 'y') return
+            const t = e.target
+            if (t == null || this.area.contains(t)) return
+            if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return
+            e.preventDefault()
+            if (k == 'y' || e.shiftKey) this.redo()
+            else this.undo()
+        }
+
         this.onMousedown = e => {
+            // A press elsewhere on the page ends it, except in the menus and dialogs the editor opened
+            if (!this.owns(e.target) && !(e.target.closest && e.target.closest('.y-context-menu, .y-dropdown, .y-modal, .ye-popup'))) {
+                if (lastEditor == this) lastEditor = null
+                return
+            }
+            lastEditor = this
             if (!this.owns(e.target)) return
             this.saveRange()
             if (e.target.closest('.ye-toolbar__btn, .ye-menu__item, .ye-swatch, .ye-tableops button, .ye-grid__cell')) e.preventDefault()
@@ -147,6 +205,7 @@ export const withWiring = (Base) => class extends Base {
                 this.closeMenus()
                 if (willOpen) {
                     if (pop.hasAttribute('data-ye-table-pop')) this.buildTablePop(pop)
+                    this.themePopup(pop)
                     document.body.appendChild(pop)
                     menu.classList.add('is-open')
                     toggle.setAttribute('aria-expanded', 'true')
@@ -175,6 +234,13 @@ export const withWiring = (Base) => class extends Base {
                 this.closeMenus(); this.sync()
                 return
             }
+            const sourceBtn = e.target.closest('[data-ye-source]')
+            if (sourceBtn && this.owns(sourceBtn)) {
+                e.preventDefault()
+                this.closeMenus()
+                this.pickImage(+sourceBtn.dataset.yeSource)
+                return
+            }
             const upBtn = e.target.closest('[data-ye-upload]')
             if (upBtn) {
                 e.preventDefault()
@@ -190,6 +256,7 @@ export const withWiring = (Base) => class extends Base {
                 if (c == 'ye-link' || c == 'ye-image' || c == 'ye-video') this.nextFormAnchor = this.anchorUnder(cmdEl)
                 this.run(c, cmdEl.dataset.arg)
                 this.closeMenus(); this.sync(); this.updateStates()
+                if (c != 'undo' && c != 'redo') this.recordState()
             }
         }
 
@@ -236,7 +303,9 @@ export const withWiring = (Base) => class extends Base {
 
         this.docClick = e => {
             if (this.imgHandle && this.imgHandle.contains(e.target)) return
-            if (!this.owns(e.target)) this.closeMenus()
+            if (this.imgBar && this.imgBar.contains(e.target)) return
+            // A click into the text closes an open toolbar menu too, as one anywhere else does
+            if (!this.owns(e.target) || this.area.contains(e.target)) this.closeMenus()
             if (this.ctxPop && !this.ctxPop.contains(e.target)) this.hideTableCtx()
             if (this.textPop && !this.textPop.contains(e.target)) this.closeTextMenu()
             if (this.formPop && !this.formPop.contains(e.target) && !this.root.contains(e.target)) {
@@ -249,7 +318,44 @@ export const withWiring = (Base) => class extends Base {
             const inside = [this.textMenuEl, this.textPop, this.ctxPop].some(el => el && e && e.target instanceof Node && el.contains(e.target))
             if (inside) return
             this.hideTableCtx(); this.closeTextMenu(); this.closeMenus(); if (this.selectedImg) this.showImgHandle()
+            this.followPopups()
         }
+    }
+
+    // Sizes and fonts the editor never sets itself come only from Chrome copying computed looks: they go,
+    // and a span left with nothing goes with them
+    dropComputedSpans () {
+        this.area.querySelectorAll('span[style]').forEach(span => {
+            ['font-size', 'font-family', 'line-height', 'letter-spacing', 'font-weight', 'font-style'].forEach(p => span.style.removeProperty(p))
+            if (span.getAttribute('style').trim() == '') {
+                span.removeAttribute('style')
+                if (span.attributes.length == 0) span.replaceWith(...span.childNodes)
+            }
+        })
+    }
+
+    // A selected picture: Delete or Backspace takes it out, any other key lets it go
+    imageKey (e) {
+        const img = this.selectedImg
+        if (img == null || e.ctrlKey || e.metaKey || e.altKey) return false
+        if (e.key == 'Backspace' || e.key == 'Delete') {
+            e.preventDefault()
+            this.imageOp('img-del', img)
+            return true
+        }
+        if ((e.key || '').length == 1 || e.key == 'Enter') this.deselectImage()
+        return false
+    }
+
+    // Find and a dialog of the standalone build stand by the editor: a scroll takes them along
+    followPopups () {
+        const top = this.root.getBoundingClientRect().top
+        const shift = this.popTop == null ? 0 : top - this.popTop
+        this.popTop = top
+        if (shift == 0) return
+        ;[this.findPop, this.formPop].forEach(pop => {
+            if (pop && pop.classList.contains('ye-popup')) pop.style.top = (parseFloat(pop.style.top) || 0) + shift + 'px'
+        })
     }
 
     listenGlobal (on) {
@@ -259,6 +365,8 @@ export const withWiring = (Base) => class extends Base {
         document[m]('mousedown', this.onMousedown)
         document[m]('change', this.onChange)
         document[m]('keydown', this.onHexKey)
+        document[m]('keydown', this.onUndoKey)
+        if (!on && lastEditor == this) lastEditor = null
         document[m]('click', this.onClick)
         document[m]('mouseover', this.onMouseover)
         document[m]('focusin', this.onMouseover)

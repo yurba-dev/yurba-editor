@@ -18,16 +18,24 @@ export const withToolbar = (Base) => class extends Base {
         function toggle (cls, title, inner) {
             return '<button type="button" class="ye-toolbar__btn' + cls + '" data-ye-menu-toggle aria-haspopup="true" aria-expanded="false" title="' + t(title) + '" aria-label="' + t(title) + '">' + inner + '</button>'
         }
+        const extras = this.extraButtons()
+        const placed = []
         let html = '<div class="ye-toolbar" role="toolbar">'
         tokens.forEach(token => {
             if (token == '|') {
                 html += '<span class="ye-toolbar__sep" aria-hidden="true"></span>'
-            } else if (token == 'image' && this.uploadEnabled) {
-                html += '<div class="ye-menu" data-ye-menu>' + toggle('', 'Insert image', this.renderIcon('image')) + '<div class="ye-menu__pop"><button type="button" class="ye-menu__item" data-ye-upload>' + t('Upload image…') + '</button><button type="button" class="ye-menu__item" data-cmd="ye-image">' + t('By URL…') + '</button></div></div>'
+            } else if (token == 'image' && (this.uploadEnabled || this.imageSources.length)) {
+                html += '<div class="ye-menu" data-ye-menu>' + toggle('', 'Insert image', this.renderIcon('image')) + '<div class="ye-menu__pop">' +
+                    (this.uploadEnabled ? '<button type="button" class="ye-menu__item" data-ye-upload>' + t('Upload image…') + '</button>' : '') +
+                    this.imageSources.map((s, i) => '<button type="button" class="ye-menu__item" data-ye-source="' + i + '">' + escapeHtml(s.label) + '</button>').join('') +
+                    (this.imageUrl ? '<button type="button" class="ye-menu__item" data-cmd="ye-image">' + t('By URL…') + '</button>' : '') + '</div></div>'
+            } else if (token == 'image' && !this.imageUrl) {
+                // Nothing to insert a picture with: no button
             } else if (token == 'heading') {
                 html += '<div class="ye-menu" data-ye-menu>' + toggle(' ye-toolbar__btn--wide', 'Paragraph style', '<span data-ye-heading-label>' + t('Paragraph') + '</span><span class="ye-caret" aria-hidden="true">' + this.iconOr('caret', '▾') + '</span>') + '<div class="ye-menu__pop">'
-                Object.keys(HEADINGS).forEach(tag => {
-                    html += '<button type="button" class="ye-menu__item ye-menu__item--' + tag + '" data-cmd="formatBlock" data-arg="' + tag + '">' + t(HEADINGS[tag]) + '</button>'
+                // Ctrl+Alt+digit goes by the place in this list, see shortcut()
+                ;['p'].concat(this.headingLevels()).forEach((tag, i) => {
+                    html += '<button type="button" class="ye-menu__item ye-menu__item--' + tag + ' ye-menu__item--hinted" data-cmd="formatBlock" data-arg="' + tag + '">' + t(HEADINGS[tag]) + '<span class="ye-menu__hint">Ctrl+Alt+' + i + '</span></button>'
                 })
                 html += '</div></div>'
             } else if (token == 'forecolor' || token == 'backcolor') {
@@ -43,12 +51,30 @@ export const withToolbar = (Base) => class extends Base {
                 html += '</div></div>'
             } else if (token == 'table') {
                 html += '<div class="ye-menu" data-ye-menu>' + toggle('', 'Table', this.renderIcon('table')) + '<div class="ye-menu__pop ye-menu__pop--table" data-ye-table-pop></div></div>'
+            } else if (extras.some(b => b.key == token)) {
+                placed.push(token)
+                html += this.extraButtonHtml(extras.find(b => b.key == token))
             } else if (DEFS[token]) {
                 const d = DEFS[token]
                 const tip = t(d.title) + (SHORTCUTS[token] ? ' (' + SHORTCUTS[token] + ')' : '')
                 html += '<button type="button" class="ye-toolbar__btn' + (d.mod ? ' ye-toolbar__btn--' + d.mod : '') + '" data-cmd="' + d.cmd + '"' + (d.arg != null ? ' data-arg="' + d.arg + '"' : '') + ' title="' + tip + '" aria-label="' + t(d.title) + '">' + this.renderIcon(token) + '</button>'
             }
         })
+        // Host buttons the token list leaves out go last
+        extras.forEach(b => { if (placed.indexOf(b.key) == -1) html += this.extraButtonHtml(b) })
         return html + '</div>'
+    }
+
+    // Host buttons: { key, icon, title, shortcut, onClick(editor, button) }
+    extraButtons () {
+        const list = this.options && Array.isArray(this.options.extraButtons) ? this.options.extraButtons : []
+        return list.filter(b => b && b.key && typeof b.onClick == 'function')
+    }
+
+    extraButtonHtml (b) {
+        // Markup of the button's own wins; a Material Symbols name gives way to the icons option
+        const icon = b.icon && b.icon.includes('<') ? b.icon : this.iconOr(b.key, '<span class="material-symbols-rounded ye-ico">' + escapeHtml(b.icon || '') + '</span>')
+        const title = escapeHtml(b.title || b.key)
+        return '<button type="button" class="ye-toolbar__btn" data-ye-extra="' + escapeHtml(b.key) + '" title="' + title + (b.shortcut ? ' (' + escapeHtml(b.shortcut) + ')' : '') + '" aria-label="' + title + '">' + icon + '</button>'
     }
 }

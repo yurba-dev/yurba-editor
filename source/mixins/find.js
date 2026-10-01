@@ -1,7 +1,20 @@
-import { escapeHtml, escapeRegExp, exec } from '../helpers/utils.js'
+import { escapeHtml, escapeRegExp, exec, shortcutKey } from '../helpers/utils.js'
 
 // Taken at load: a page may later shadow Highlight
 const CssHighlight = typeof Highlight == 'function' ? Highlight : null
+
+// The highlight names are the page's, one for every editor on it: each keeps its own matches, painted together
+const findMarks = new Map()
+
+function paintFind () {
+    if (CssHighlight == null || !window.CSS || !CSS.highlights) return
+    if (findMarks.size == 0) { CSS.highlights.delete('ye-find'); CSS.highlights.delete('ye-find-current'); return }
+    const all = new CssHighlight()
+    const current = new CssHighlight()
+    findMarks.forEach(own => { own.all.forEach(r => all.add(r)); own.current.forEach(r => current.add(r)) })
+    CSS.highlights.set('ye-find', all)
+    CSS.highlights.set('ye-find-current', current)
+}
 
 export const withFind = (Base) => class extends Base {
     openFindPop () {
@@ -10,6 +23,7 @@ export const withFind = (Base) => class extends Base {
         this.fillFindPop(pop)
         this.placePopupBelow(pop, (this.toolbar || this.area).getBoundingClientRect(), 'right')
         this.revealPopup(pop)
+        this.popTop = this.root.getBoundingClientRect().top
         this.findInput.focus(); this.findInput.select()
         this.runFind()
     }
@@ -39,21 +53,25 @@ export const withFind = (Base) => class extends Base {
         this.findCount = pop.querySelector('.ye-findpop__count')
         this.findCase = pop.querySelector('.ye-findpop__case')
 
-        pop.addEventListener('mousedown', e => {
+        function press (e) {
             const b = e.target.closest('[data-ye-find]')
             if (b == null) return
             e.preventDefault()
             const op = b.dataset.yeFind
-            if (op == 'prev') this.findNav(-1)
-            else if (op == 'next') this.findNav(1)
-            else if (op == 'one') this.replaceCurrent()
-            else if (op == 'all') this.replaceAll()
-            else if (op == 'close') this.hideFindPop()
-        })
+            if (op == 'prev') editor.findNav(-1)
+            else if (op == 'next') editor.findNav(1)
+            else if (op == 'one') editor.replaceCurrent()
+            else if (op == 'all') editor.replaceAll()
+            else if (op == 'close') editor.hideFindPop()
+        }
+        pop.addEventListener('mousedown', press)
+        pop.addEventListener('keydown', e => { if (e.key == 'Escape' && this.findPop == pop) { e.preventDefault(); this.hideFindPop() } })
+        // From the keyboard a button gets only a click
+        pop.addEventListener('click', e => { if (e.detail == 0) press(e) })
         this.findInput.addEventListener('input', () => this.runFind())
         this.findCase.addEventListener('change', () => this.runFind())
         function histKey (e) {
-            const k = (e.key || '').toLowerCase()
+            const k = shortcutKey(e)
             if (!(e.ctrlKey || e.metaKey) || (k != 'z' && k != 'y')) return false
             e.preventDefault()
             if (k == 'y' || e.shiftKey) editor.redo(); else editor.undo()
@@ -80,6 +98,7 @@ export const withFind = (Base) => class extends Base {
         const pop = this.findPop
         this.findPop = null
         this.findState = null
+        if (pop.contains(document.activeElement)) this.restoreRange()
         this.clearFindHighlights()
         this.dismissFindPop(pop)
     }
@@ -151,22 +170,22 @@ export const withFind = (Base) => class extends Base {
     highlightMatches () {
         if (CssHighlight == null || !window.CSS || !CSS.highlights) return
         const st = this.findState
-        const all = new CssHighlight()
-        const current = new CssHighlight()
+        const own = { all: [], current: [] }
         if (st) {
             for (let i = 0; i < st.matches.length; i++) {
                 const m = st.matches[i]
                 const r = document.createRange()
                 try { r.setStart(m.node, m.start); r.setEnd(m.node, m.end) } catch (e) { continue }
-                if (i == st.index) current.add(r); else all.add(r)
+                if (i == st.index) own.current.push(r); else own.all.push(r)
             }
         }
-        CSS.highlights.set('ye-find', all)
-        CSS.highlights.set('ye-find-current', current)
+        findMarks.set(this, own)
+        paintFind()
     }
 
     clearFindHighlights () {
-        if (window.CSS && CSS.highlights) { CSS.highlights.delete('ye-find'); CSS.highlights.delete('ye-find-current') }
+        findMarks.delete(this)
+        paintFind()
     }
 
     findNav (dir) {

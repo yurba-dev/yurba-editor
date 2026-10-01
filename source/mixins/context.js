@@ -62,6 +62,8 @@ export const withContext = (Base) => class extends Base {
                     clearTimeout(hideTimer)
                     editor.positionSubmenu(btn, submenu)
                     submenu.classList.remove('is-hidden')
+                    // Opened in place (a phone), it makes the menu taller: the menu moves up and, still too tall, scrolls
+                    if (submenu.classList.contains('y-dropdown__submenu--inline')) editor.fitPopup(submenu.closest('.ye-popup'))
                 }
                 function hide () {
                     hideTimer = setTimeout(() => submenu.classList.add('is-hidden'), 80)
@@ -94,6 +96,15 @@ export const withContext = (Base) => class extends Base {
         // Markup of the item's own wins; a Material Symbols name gives way to the icons option
         if (item.icon && item.icon.includes('<')) return item.icon
         return this.iconOr(key, item.icon ? '<span class="material-symbols-rounded">' + item.icon + '</span>' : '')
+    }
+
+    fitPopup (pop) {
+        if (pop == null) return
+        const pad = 8
+        const r = pop.getBoundingClientRect()
+        if (r.bottom <= window.innerHeight - pad) return
+        pop.style.top = Math.max(pad, window.innerHeight - pad - r.height) + 'px'
+        if (r.height > window.innerHeight - pad * 2) pop.classList.add('ye-popup--scroll')
     }
 
     positionSubmenu (btn, sub) {
@@ -131,7 +142,8 @@ export const withContext = (Base) => class extends Base {
             return
         }
         if (action == 'paste') { this.pasteFromClipboard(); return }
-        if (action == 'clear') { this.setHTML(''); this.recordState(); return }
+        // Not setHTML(): before any edit that is a load, which Ctrl+Z could not take back
+        if (action == 'clear') { this.flushHistory(); this.deselectImage(); this.area.innerHTML = ''; this.sync(); this.recordState(); return }
         if (action == 'clearFormat') { this.run('ye-clear'); this.updateStates(); return }
         if (action == 'find') { this.openFindPop(); return }
         if (action == 'lower' || action == 'upper' || action == 'capitalize') { this.transformCase(action); return }
@@ -143,8 +155,10 @@ export const withContext = (Base) => class extends Base {
     // The async clipboard gives images only as blobs, and a copied file from the system not at all
     pasteFromClipboard () {
         const clip = navigator.clipboard
-        if (clip == null) return
-        const text = () => { if (clip.readText) clip.readText().then(t => this.insertClipboard('', t)).catch(() => {}) }
+        // The browser may not let a page read what was copied: say so, rather than paste nothing
+        const refused = () => this.notice('paste-blocked', this.t('The browser does not let the menu paste. Press Ctrl+V.'))
+        if (clip == null || !clip.readText) { refused(); return }
+        const text = () => { clip.readText().then(t => this.insertClipboard('', t)).catch(refused) }
         if (!clip.read || (!this.onFiles && !this.uploadEnabled)) { text(); return }
         clip.read().then(async items => {
             const files = []

@@ -2,6 +2,13 @@ export function escapeHtml (s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+// The letter of a shortcut by the key pressed: in a Cyrillic layout Ctrl+Z comes as "я"
+export function shortcutKey (e) {
+    const k = (e.key || '').toLowerCase()
+    if (/^[a-z]$/.test(k) || !/^Key[A-Z]$/.test(e.code || '')) return k
+    return e.code.slice(3).toLowerCase()
+}
+
 export function exec (cmd, arg) {
     try { document.execCommand(cmd, false, arg == null ? null : arg) } catch (e) {}
 }

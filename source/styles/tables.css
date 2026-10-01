@@ -112,3 +112,101 @@
     margin: 6px 12px;
     background: var(--ye-border);
 }
+
+/* Bar over the table */
+
+.ye-tablebar {
+    position: fixed;
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    gap: 2px;
+    box-sizing: border-box;
+    max-width: calc(100vw - 16px);
+    padding: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border: 1px solid var(--ye-border);
+    border-radius: var(--yurba-radius-l, 14px);
+    background: var(--ye-surface);
+    color: var(--ye-text-soft);
+    box-shadow: var(--ye-shadow);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.ye-tablebar::-webkit-scrollbar {
+    display: none;
+}
+
+.ye-tablebar__sep {
+    flex: none;
+    width: 1px;
+    height: 20px;
+    margin: 0 2px;
+    background: var(--ye-border);
+}
+
+.ye-tablebar__btn {
+    flex: none;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--yurba-radius-pill, 100px);
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.ye-tablebar__btn .ye-ico {
+    font-size: 20px;
+}
+
+.ye-tablebar__btn:hover {
+    background: var(--ye-hover);
+    color: var(--ye-text);
+}
+
+.ye-tablebar__btn.is-active {
+    background: var(--ye-accent-soft);
+    color: var(--ye-accent-ink);
+}
+
+.ye-tablebar__btn--danger {
+    color: var(--ye-danger);
+}
+
+.ye-tablebar__btn--danger:hover {
+    background: rgb(220 38 38 / 8%);
+    background: color-mix(in srgb, var(--ye-danger) 8%, transparent);
+    color: var(--ye-danger);
+}
+
+.ye-tablebar__btn[aria-disabled="true"] {
+    opacity: .35;
+    cursor: default;
+}
+
+.ye-tablebar__btn[aria-disabled="true"]:hover {
+    background: transparent;
+}
+
+/* A finger needs a taller target; the row stays one line on a phone and scrolls where it still does not fit */
+@media (pointer: coarse) {
+    .ye-tablebar {
+        gap: 0;
+    }
+
+    .ye-tablebar__btn {
+        height: 36px;
+    }
+}

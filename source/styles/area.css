@@ -14,8 +14,12 @@
     max-height: 250px;
 }
 
-.ye-area:empty::before {
+/* Out of the flow, so an empty paragraph left after clearing stays on the same line as the hint */
+.ye-area:empty::before,
+.ye-area.is-empty::before {
     content: attr(data-placeholder);
+    float: left;
+    height: 0;
     color: var(--ye-muted);
     pointer-events: none;
     user-select: none;
@@ -117,12 +121,196 @@
     box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
     cursor: nwse-resize;
     display: none;
+    touch-action: none;
     transition: transform .15s ease;
+}
+
+/* A finger needs more to hold */
+@media (pointer: coarse) {
+    .ye-img-handle {
+        width: 20px;
+        height: 20px;
+    }
 }
 
 .ye-img-handle:hover,
 .ye-img-handle:active {
     transform: scale(1.25);
+}
+
+/* What a resized picture lines up with */
+.ye-area .ye-img--snap {
+    outline: 2px dashed var(--ye-accent);
+    outline-offset: 2px;
+}
+
+.ye-img-guide {
+    position: fixed;
+    z-index: 9998;
+    display: none;
+    border-radius: 1px;
+    background: var(--ye-accent);
+    pointer-events: none;
+}
+
+.ye-img-badge {
+    position: fixed;
+    z-index: 9999;
+    display: none;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--ye-text);
+    color: var(--ye-surface);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+.ye-img-badge--snap {
+    background: var(--ye-accent);
+    color: var(--ye-on-accent);
+}
+
+/* Image bar */
+
+.ye-imgbar {
+    position: fixed;
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    gap: 2px;
+    max-width: calc(100vw - 16px);
+    padding: 4px;
+    overflow-x: auto;
+    border: 1px solid var(--ye-border);
+    border-radius: 10px;
+    background: var(--ye-surface);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 14%);
+    scrollbar-width: none;
+}
+
+.ye-imgbar::-webkit-scrollbar {
+    display: none;
+}
+
+.ye-imgbar__btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--ye-text);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ye-imgbar__btn--text {
+    padding: 0 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ye-imgbar__btn:hover {
+    background: var(--ye-hover);
+}
+
+.ye-imgbar__btn--on,
+.ye-imgbar__btn--on:hover {
+    background: var(--ye-accent-soft);
+    color: var(--ye-accent-ink);
+}
+
+.ye-imgbar__btn--danger {
+    color: var(--ye-danger);
+}
+
+.ye-imgbar__btn .ye-ico {
+    font-size: 20px;
+}
+
+.ye-imgbar__sep {
+    flex-shrink: 0;
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: var(--ye-border);
+}
+
+/* The sizes in the standalone right-click menu */
+.ye-tableops__sizes {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 2px 6px;
+}
+
+.ye-tableops .ye-tableops__sizes button {
+    min-height: 30px;
+    padding: 6px 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A finger needs more to hold */
+@media (pointer: coarse) {
+    .ye-imgbar__btn {
+        min-width: 38px;
+        height: 38px;
+    }
+}
+
+/* A captioned picture: the figure takes the size and float, the picture fills it */
+.ye-area figure {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: .7em auto;
+}
+
+.ye-area figure[style*="float: left"] {
+    margin: .2em 1em .5em 0;
+}
+
+.ye-area figure[style*="float: right"] {
+    margin: .2em 0 .5em 1em;
+}
+
+/* Figures one after another share a line, as pictures do */
+.ye-area figure:has(+ figure),
+.ye-area figure + figure {
+    display: inline-block;
+    vertical-align: top;
+    margin: .7em 0;
+}
+
+.ye-area figure img {
+    display: block;
+    width: 100%;
+    margin: 0;
+}
+
+.ye-area figcaption {
+    padding-top: 6px;
+    font-size: .88em;
+    line-height: 1.4;
+    color: var(--ye-text-soft);
+    text-align: center;
+}
+
+.ye-area figcaption:has(> br:only-child)::before {
+    content: var(--ye-caption-hint, "");
+    float: left;
+    width: 100%;
+    height: 0;
+    color: var(--ye-muted);
+    pointer-events: none;
 }
 
 .ye-area iframe {

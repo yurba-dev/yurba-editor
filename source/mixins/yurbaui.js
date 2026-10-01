@@ -1,4 +1,4 @@
-import { DANGER_OPS, IMAGE_OPS, LINK_OPS, TABLE_OPS } from '../helpers/constants.js'
+import { DANGER_OPS, IMG_SIZES, LINK_OPS, TABLE_OPS } from '../helpers/constants.js'
 
 export const withYurbaUI = (Base) => class extends Base {
     uiCtxItems (items) {
@@ -12,7 +12,14 @@ export const withYurbaUI = (Base) => class extends Base {
     }
 
     uiOps (ops, run) {
-        return ops.map(op => op[0] == '|' ? { separator: true } : {
+        return ops.map(op => op[0] == '|' ? { separator: true } : op[0] == 'size' ? {
+            icon: this.renderIcon('size'),
+            label: this.t(op[1]),
+            children: IMG_SIZES.map(p => ['size-' + p, p + '%']).concat([['size-auto', 'Original size']]).map(size => ({
+                label: this.t(size[1]),
+                onClick: () => run(size[0]),
+            })),
+        } : {
             icon: this.renderIcon(op[0]),
             label: this.t(op[1]),
             className: DANGER_OPS.includes(op[0]) ? 'y-dropdown__item--danger' : '',
@@ -27,6 +34,7 @@ export const withYurbaUI = (Base) => class extends Base {
         this.closeTextMenu()
         this.saveRange()
         const menu = new YurbaUI.ContextMenu(this.uiCtxItems(this.contextMenuItems || []), {
+            onOpen: pop => this.scrollbar(pop),
             onClose: () => {
                 if (this.textMenu != menu) return
                 this.textMenu = null
@@ -49,9 +57,10 @@ export const withYurbaUI = (Base) => class extends Base {
         this.saveRange()
         let items
         if (kind == 'link') items = this.uiOps(LINK_OPS, op => { this.linkOp(op); this.sync() })
-        else if (kind == 'img') items = this.uiOps(IMAGE_OPS, op => this.imageOp(op))
+        else if (kind == 'img') items = this.uiOps(this.imageOps(), op => this.imageOp(op))
         else items = this.uiOps(TABLE_OPS, op => { this.area.focus(); this.tableOp(op); this.sync() })
         const menu = new YurbaUI.ContextMenu(items, {
+            onOpen: pop => this.scrollbar(pop),
             onClose: () => {
                 if (this.ctxMenu != menu) return
                 this.ctxMenu = null
@@ -127,8 +136,21 @@ export const withYurbaUI = (Base) => class extends Base {
         if (modal) modal.hide()
     }
 
+    // Before YurbaUI.Scrollbar a page keeps the native bars
+    scrollbar (el) {
+        if (el && YurbaUI.Scrollbar) YurbaUI.Scrollbar.attach(el)
+    }
+
+    toggleFull () {
+        super.toggleFull()
+        // The thumbs follow the text into the full-screen layer
+        if (YurbaUI.Scrollbar) [this.area, this.sourceView].forEach(el => { const bar = YurbaUI.Scrollbar.get(el); if (bar) bar.refresh() })
+    }
+
     wire () {
         super.wire()
+        this.scrollbar(this.area)
+        this.scrollbar(this.sourceView)
         this.toolbarMenus = []
         this.querySelectorAll('[data-ye-menu]').forEach(menu => {
             const toggle = menu.querySelector('[data-ye-menu-toggle]')
@@ -139,19 +161,23 @@ export const withYurbaUI = (Base) => class extends Base {
                 ? new YurbaUI.Dropdown([], {
                     trigger: toggle,
                     content: pop,
-                    onOpen: () => { if (pop.hasAttribute('data-ye-table-pop')) this.buildTablePop(pop) },
+                    onOpen: menuEl => {
+                        if (pop.hasAttribute('data-ye-table-pop')) this.buildTablePop(pop)
+                        this.scrollbar(menuEl)
+                    },
                 })
                 : new YurbaUI.Dropdown(() => Array.from(pop.querySelectorAll('.ye-menu__item')).map(button => ({
                     label: button.innerHTML,
                     className: button.className.split(' ').filter(c => c.startsWith('ye-menu__item--')).join(' '),
                     onClick: () => this.toolbarItem(button),
-                })), { trigger: toggle })
+                })), { trigger: toggle, onOpen: menuEl => this.scrollbar(menuEl) })
             dropdown.render()
             this.toolbarMenus.push(dropdown)
         })
     }
 
     toolbarItem (button) {
+        if (button.hasAttribute('data-ye-source')) return this.pickImage(+button.dataset.yeSource)
         if (button.hasAttribute('data-ye-upload')) {
             this.saveRange()
             this.fileInput.click()
@@ -162,6 +188,7 @@ export const withYurbaUI = (Base) => class extends Base {
         this.run(button.dataset.cmd, button.dataset.arg)
         this.sync()
         this.updateStates()
+        this.recordState()
     }
 
     closeMenus () {

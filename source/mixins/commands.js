@@ -10,12 +10,14 @@ export const withCommands = (Base) => class extends Base {
         this.area.focus()
         if (cmd == 'undo') return this.undo()
         if (cmd == 'redo') return this.redo()
+        // A command is a step of its own, apart from the typing before it; afterCmd() closes it
+        this.flushHistory()
         if (cmd == 'ye-link') return this.insertLink()
         if (cmd == 'ye-image') return this.insertImage()
         if (cmd == 'ye-video') return this.insertVideo()
         if (cmd == 'ye-hr') return exec('insertHTML', '<hr><p><br></p>')
         if (cmd == 'ye-code') return this.toggleInline('code')
-        if (cmd == 'ye-codeblock') return this.formatBlock('pre')
+        if (cmd == 'ye-codeblock') return this.codeBlock()
         if (cmd == 'ye-align') return this.setAlign(arg)
         if (cmd == 'ye-indent') return this.step(32)
         if (cmd == 'ye-outdent') return this.step(-32)
@@ -27,6 +29,7 @@ export const withCommands = (Base) => class extends Base {
         if (cmd == 'ye-upper') return this.transformCase('upper')
         if (cmd == 'ye-find') return this.openFindPop()
         if (cmd == 'formatBlock') return this.formatBlock(arg)
+        if (cmd == 'insertOrderedList' || cmd == 'insertUnorderedList') return this.list(cmd)
         exec(cmd, arg)
     }
 
@@ -35,6 +38,14 @@ export const withCommands = (Base) => class extends Base {
         try { current = (document.queryCommandValue('formatBlock') || '').toLowerCase() } catch (e) {}
         const target = current == arg ? 'p' : arg
         exec('formatBlock', '<' + target + '>')
+    }
+
+    codeBlock () {
+        this.formatBlock('pre')
+        const sel = window.getSelection()
+        const pre = sel && sel.rangeCount ? ancestorTag(sel.anchorNode, 'PRE') : null
+        // Like a rule or a table, a code block at the very end leaves a line to go on below it
+        if (pre && pre.parentNode == this.area && pre.nextElementSibling == null) pre.insertAdjacentHTML('afterend', '<p><br></p>')
     }
 
     applyColor (cmd, color) {

@@ -23,3 +23,7 @@
     transition: none;
     pointer-events: auto;
 }
+
+.y-win .ye-linkpop {
+    width: auto;
+}

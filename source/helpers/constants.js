@@ -1,10 +1,10 @@
 export const DROP = { SCRIPT: 1, STYLE: 1, OBJECT: 1, EMBED: 1, APPLET: 1, PARAM: 1, FRAME: 1, FRAMESET: 1, NOSCRIPT: 1, NOEMBED: 1, NOFRAMES: 1, XMP: 1, PLAINTEXT: 1, TEMPLATE: 1, LINK: 1, META: 1, HEAD: 1, TITLE: 1, BASE: 1, FORM: 1, INPUT: 1, BUTTON: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1, SVG: 1, MATH: 1 }
 
-export const ALLOWED = { P: 1, DIV: 1, BR: 1, HR: 1, STRONG: 1, B: 1, EM: 1, I: 1, U: 1, S: 1, SUB: 1, SUP: 1, A: 1, SPAN: 1, UL: 1, OL: 1, LI: 1, BLOCKQUOTE: 1, H1: 1, H2: 1, H3: 1, H4: 1, CODE: 1, PRE: 1, IMG: 1, IFRAME: 1, TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1 }
+export const ALLOWED = { P: 1, DIV: 1, BR: 1, HR: 1, STRONG: 1, B: 1, EM: 1, I: 1, U: 1, S: 1, SUB: 1, SUP: 1, A: 1, SPAN: 1, UL: 1, OL: 1, LI: 1, BLOCKQUOTE: 1, H1: 1, H2: 1, H3: 1, H4: 1, CODE: 1, PRE: 1, IMG: 1, FIGURE: 1, FIGCAPTION: 1, IFRAME: 1, TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1 }
 
 export const ATTRS = { a: ['href', 'title', 'target'], img: ['src', 'alt', 'title', 'width', 'height'], iframe: ['src', 'width', 'height', 'allow', 'allowfullscreen', 'frameborder', 'title'], td: ['colspan', 'rowspan'], th: ['colspan', 'rowspan'] }
 
-export const STYLE_PROPS = { p: ['text-align', 'margin-left'], div: ['text-align', 'margin-left'], h1: ['text-align'], h2: ['text-align'], h3: ['text-align'], h4: ['text-align'], li: ['text-align'], blockquote: ['text-align', 'margin-left'], td: ['text-align'], th: ['text-align'], span: ['color', 'background-color'], img: ['width', 'height', 'float'], table: ['width'] }
+export const STYLE_PROPS = { p: ['text-align', 'margin-left'], div: ['text-align', 'margin-left'], h1: ['text-align', 'margin-left'], h2: ['text-align', 'margin-left'], h3: ['text-align', 'margin-left'], h4: ['text-align', 'margin-left'], li: ['text-align', 'margin-left'], blockquote: ['text-align', 'margin-left'], pre: ['text-align', 'margin-left'], td: ['text-align'], th: ['text-align'], span: ['color', 'background-color'], b: ['color', 'background-color'], strong: ['color', 'background-color'], i: ['color', 'background-color'], em: ['color', 'background-color'], u: ['color', 'background-color'], s: ['color', 'background-color'], a: ['color', 'background-color'], code: ['color', 'background-color'], sub: ['color', 'background-color'], sup: ['color', 'background-color'], img: ['width', 'height', 'float'], figure: ['width', 'float'], figcaption: ['text-align'], table: ['width'] }
 
 export const CLASS_ALLOWED = ['ye-table--no-grid']
 
@@ -34,8 +34,8 @@ export const ICONS = {
     'cell-left': 'format_align_left', 'cell-center': 'format_align_center', 'cell-right': 'format_align_right',
     'merge-right': 'merge', 'merge-down': 'merge', split: 'call_split',
     edit: 'edit', open: 'open_in_new', remove: 'link_off',
-    'align-left': 'format_align_left', 'align-center': 'format_align_center', 'align-right': 'format_align_right',
-    'align-none': 'format_align_justify', alt: 'title', 'img-del': 'delete_forever',
+    'align-left': 'format_image_left', 'align-center': 'format_align_center', 'align-right': 'format_image_right',
+    'align-none': 'format_align_justify', alt: 'title', 'img-del': 'delete_forever', caption: 'subtitles', size: 'photo_size_select_large',
     'find-prev': 'keyboard_arrow_up', 'find-next': 'keyboard_arrow_down'
 }
 
@@ -79,11 +79,19 @@ export const SHORTCUTS = {
 
 export const LINK_OPS = [['edit', 'Edit link'], ['open', 'Open'], ['remove', 'Remove link']]
 
+// "size" opens the IMG_SIZES choices
 export const IMAGE_OPS = [
+    ['size', 'Size'],
+    ['|'],
     ['align-left', 'Float left'], ['align-center', 'Center'], ['align-right', 'Float right'], ['align-none', 'Inline'],
     ['|'],
-    ['alt', 'Alt text…'], ['img-del', 'Delete image']
+    ['caption', 'Caption'], ['alt', 'Alt text…'], ['img-del', 'Delete image']
 ]
+
+// Widths a picture is given in one press, as shares of the text; a drag also stops at two thirds
+export const IMG_SIZES = [25, 33, 50, 75, 100]
+
+export const IMG_SNAPS = [25, 33, 50, 66, 75, 100]
 
 export const TABLE_OPS = [
     ['row-above', 'Row above'], ['row-below', 'Row below'], ['col-left', 'Col left'], ['col-right', 'Col right'],

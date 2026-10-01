@@ -1,4 +1,4 @@
-import { IMAGE_OPS, LINK_OPS } from '../helpers/constants.js'
+import { IMG_SIZES, LINK_OPS } from '../helpers/constants.js'
 
 export const withMenus = (Base) => class extends Base {
     showCtx (x, y, kind) {
@@ -106,8 +106,23 @@ export const withMenus = (Base) => class extends Base {
         const wrap = document.createElement('div')
         wrap.className = 'ye-tableops'
         wrap.setAttribute('role', 'menu')
-        IMAGE_OPS.forEach(op => {
+        this.imageOps().forEach(op => {
             if (op[0] == '|') { const d = document.createElement('div'); d.className = 'ye-tableops__sep'; wrap.appendChild(d); return }
+            // The sizes as one row of short buttons, the popup has no submenus
+            if (op[0] == 'size') {
+                const row = document.createElement('div')
+                row.className = 'ye-tableops__sizes'
+                IMG_SIZES.map(p => ['size-' + p, p + '%']).concat([['size-auto', this.t('Auto')]]).forEach(size => {
+                    const b = document.createElement('button')
+                    b.type = 'button'
+                    b.setAttribute('role', 'menuitem')
+                    b.textContent = size[1]
+                    b.dataset.yeImg = size[0]
+                    row.appendChild(b)
+                })
+                wrap.appendChild(row)
+                return
+            }
             const b = document.createElement('button')
             b.type = 'button'
             b.setAttribute('role', 'menuitem')
@@ -140,6 +155,7 @@ export const withMenus = (Base) => class extends Base {
         if (this.formPop && this.formPop.contains(t)) return true
         if (this.findPop && this.findPop.contains(t)) return true
         if (this.imgHandle && this.imgHandle.contains(t)) return true
+        if (this.imgBar && this.imgBar.contains(t)) return true
         const pops = this.menuPops || []
         for (let i = 0; i < pops.length; i++) if (pops[i].contains(t)) return true
         return false

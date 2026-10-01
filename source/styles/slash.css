@@ -1,0 +1,82 @@
+/* Slash menu */
+
+.ye-slash {
+    box-sizing: border-box;
+    min-width: 240px;
+    max-height: 320px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.ye-slash.is-empty {
+    display: none;
+}
+
+.ye-slash__item {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 36px;
+    padding: 8px 12px;
+    border-radius: var(--yurba-radius-m, 10px);
+    color: var(--y-win-text, var(--ye-text));
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ye-slash__item.is-active {
+    background: var(--y-win-action-bg, var(--ye-hover));
+}
+
+.ye-slash__item .ye-ico {
+    flex: none;
+    font-size: 20px;
+    opacity: .7;
+}
+
+.ye-slash__item.is-active .ye-ico {
+    color: var(--ye-accent);
+    opacity: 1;
+}
+
+.ye-slash__label {
+    flex: 1;
+}
+
+.ye-slash__hint,
+.ye-menu__hint {
+    color: var(--ye-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+/* Shortcut hints of the paragraph style menu */
+
+.ye-menu__hint {
+    margin-left: auto;
+    padding-left: 16px;
+    font-family: inherit;
+}
+
+.ye-menu__item--hinted .y-dropdown__item-label {
+    display: flex;
+    align-items: center;
+}
+
+/* No keyboard shortcuts on a touch screen */
+
+@media (hover: none) {
+    .ye-menu__hint {
+        display: none;
+    }
+}

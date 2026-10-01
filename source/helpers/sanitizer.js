@@ -4,7 +4,8 @@ const XHTML = 'http://www.w3.org/1999/xhtml'
 const URL_ATTRS = ['href', 'src', 'xlink:href', 'action', 'formaction', 'poster', 'background', 'cite', 'longdesc', 'lowsrc', 'dynsrc', 'data', 'codebase', 'manifest']
 const DROP_ATTRS = ['srcdoc', 'srcset', 'imagesrcset', 'ping', 'popover', 'popovertarget', 'popovertargetaction']
 // Loose mode: no script, remote loads, overlays or escapes
-const UNSAFE_STYLE = /expression\(|javascript:|-moz-binding|@import|behaviou?r\s*:|url\(|image-set\(|image\(|cross-fade\(|\\|\/\*|position\s*:\s*(fixed|sticky|absolute)/i
+// (a custom property would carry a banned value past the check: position: var(--p))
+const UNSAFE_STYLE = /expression\(|javascript:|-moz-binding|@import|behaviou?r\s*:|url\(|image-set\(|image\(|cross-fade\(|\\|\/\*|position\s*:\s*(fixed|sticky|absolute)|var\(|--/i
 
 export function isSafeUrl (url) {
     url = (url || '').trim()
@@ -24,7 +25,7 @@ export function safeStyleValue (prop, value) {
     if (prop == 'text-align') return ['left', 'right', 'center', 'justify'].indexOf(value) != -1
     if (prop == 'float') return ['left', 'right', 'none'].indexOf(value) != -1
     if (prop == 'margin-left') return /^\d{1,3}px$/.test(value)
-    if (prop == 'width' || prop == 'height') return /^\d{1,4}(px|%)?$/.test(value)
+    if (prop == 'width' || prop == 'height') return /^\d{1,4}(\.\d{1,2})?(px|%)?$/.test(value)
     if (prop == 'color' || prop == 'background-color') return /^(#[0-9a-f]{3,8}|rgba?\([\d.,\s]+\)|[a-z]{3,20})$/i.test(value)
     return false
 }
@@ -124,7 +125,8 @@ export function cleanChildren (parent, hosts, strict, opts) {
             const s = node.ownerDocument.createElement('s')
             while (node.firstChild) s.appendChild(node.firstChild)
             parent.replaceChild(s, node)
-        } else if (strict && ALLOWED[tag] != 1) {
+        } else if ((strict && ALLOWED[tag] != 1) || tag.indexOf('-') != -1) {
+            // A custom element would come alive in the page; its text stays
             while (node.firstChild) parent.insertBefore(node.firstChild, node)
             parent.removeChild(node)
         } else if (!cleanAttrs(node, hosts, strict, opts)) {
@@ -133,25 +135,42 @@ export function cleanChildren (parent, hosts, strict, opts) {
     }
 }
 
+// Blank text between two pictures of a line is a space on the page: with their shares of the width it pushes
+// the second one to the next line, so it goes
+function joinPictures (root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null)
+    const blank = []
+    let n
+    while ((n = walker.nextNode())) {
+        if (/\S/.test(n.nodeValue)) continue
+        const prev = n.previousSibling
+        const next = n.nextSibling
+        if (prev && next && ((prev.nodeName == 'IMG' && next.nodeName == 'IMG') || (prev.nodeName == 'FIGURE' && next.nodeName == 'FIGURE'))) blank.push(n)
+    }
+    blank.forEach(t => t.remove())
+}
+
 export function cleanHtml (html, hosts, strict, opts) {
     const tpl = document.createElement('template')
     tpl.innerHTML = html || ''
     cleanChildren(tpl.content, hosts, strict, opts)
+    joinPictures(tpl.content)
     // Serialize from the inert template: adopting would fetch images
     return tpl.innerHTML
 }
 
-const UNWRAP = { P: 1, DIV: 1, H1: 1, H2: 1, H3: 1, H4: 1, BLOCKQUOTE: 1, PRE: 1, UL: 1, OL: 1, LI: 1, TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1, HR: 1 }
+const UNWRAP = { P: 1, DIV: 1, FIGURE: 1, FIGCAPTION: 1, H1: 1, H2: 1, H3: 1, H4: 1, BLOCKQUOTE: 1, PRE: 1, UL: 1, OL: 1, LI: 1, TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1, HR: 1 }
 
 function flattenNode (parent, glyphClass) {
     const nodes = Array.prototype.slice.call(parent.childNodes)
     for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i]
         if (node.nodeType != 1) continue
-        if (node.tagName == 'IMG' && !(glyphClass && node.classList.contains(glyphClass))) { parent.removeChild(node); continue }
+        if ((node.tagName == 'IMG' && !(glyphClass && node.classList.contains(glyphClass))) || node.tagName == 'IFRAME') { parent.removeChild(node); continue }
         flattenNode(node, glyphClass)
         if (UNWRAP[node.tagName] == 1) {
-            const hasNext = node.nextSibling != null
+            // An empty line (<p><br></p>) already brings its own break
+            const hasNext = node.nextSibling != null && !(node.childNodes.length == 1 && node.firstChild.nodeName == 'BR')
             while (node.firstChild) parent.insertBefore(node.firstChild, node)
             if (hasNext) parent.insertBefore(document.createElement('br'), node)
             parent.removeChild(node)

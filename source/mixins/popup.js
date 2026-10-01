@@ -1,9 +1,21 @@
+const THEME_TOKENS = ['--ye-surface', '--ye-surface-2', '--ye-border', '--ye-border-strong', '--ye-text', '--ye-text-soft', '--ye-muted', '--ye-accent', '--ye-accent-ink', '--ye-accent-soft', '--ye-on-accent', '--ye-hover', '--ye-fill', '--ye-danger', '--ye-danger-soft', '--ye-shadow']
+
 export const withPopup = (Base) => class extends Base {
     makePopup (extra) {
         const el = document.createElement('div')
         el.className = 'ye-popup is-hidden' + (extra ? ' ' + extra : '')
+        this.themePopup(el)
         document.body.appendChild(el)
         return el
+    }
+
+    // A popup lives in <body>, outside the editor that sets the theme (a dark one, say): it takes the values along
+    themePopup (el) {
+        const cs = getComputedStyle(this.root)
+        THEME_TOKENS.forEach(name => {
+            const v = cs.getPropertyValue(name)
+            if (v) el.style.setProperty(name, v.trim())
+        })
     }
 
     revealPopup (el) {

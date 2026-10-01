@@ -22,6 +22,7 @@ const cssOrder = [
     'foot.css',
     'states.css',
     'context.css',
+    'slash.css',
 ]
 
 const jsOptions = {

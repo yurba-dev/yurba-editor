@@ -4,7 +4,12 @@ export const withPrompt = (Base) => class extends Base {
         this.formOpenTs = Date.now()
         let pop = this.formPop
         const fresh = pop == null
-        if (fresh) { pop = this.makePopup('ye-formpop'); this.formPop = pop }
+        if (fresh) {
+            pop = this.makePopup('ye-formpop')
+            this.formPop = pop
+            // Escape from its buttons and checkbox too, not only from the fields
+            pop.addEventListener('keydown', e => { if (e.key == 'Escape' && this.formPop == pop) { e.preventDefault(); this.hideFormPop() } })
+        }
         const first = this.fillForm(pop, opts)
         if (this.nextFormAnchor) {
             this.placePopupAt(pop, this.nextFormAnchor.x, this.nextFormAnchor.y)
@@ -13,6 +18,7 @@ export const withPrompt = (Base) => class extends Base {
             this.placePopupBelow(pop, (this.toolbar || this.area).getBoundingClientRect(), 'left')
         }
         if (fresh) this.revealPopup(pop)
+        this.popTop = this.root.getBoundingClientRect().top
         if (first) { try { first.focus({ preventScroll: true }) } catch (e) { first.focus() } if (first.select) first.select() }
     }
 
@@ -67,6 +73,9 @@ export const withPrompt = (Base) => class extends Base {
         }
         ok.addEventListener('mousedown', e => { e.preventDefault(); submit() })
         cancel.addEventListener('mousedown', e => { e.preventDefault(); this.hideFormPop() })
+        // Enter or Space on a focused button: a click with no mouse behind it
+        ok.addEventListener('click', e => { if (e.detail == 0) submit() })
+        cancel.addEventListener('click', e => { if (e.detail == 0) this.hideFormPop() })
         inputs.forEach(i => i.addEventListener('keydown', e => {
             if (e.key == 'Enter') { e.preventDefault(); submit() }
             else if (e.key == 'Escape') { e.preventDefault(); this.hideFormPop() }
@@ -78,6 +87,8 @@ export const withPrompt = (Base) => class extends Base {
         if (this.formPop == null) return
         const pop = this.formPop
         this.formPop = null
+        // Escape or Cancel: typing goes on in the text, not in the hidden field
+        if (pop.contains(document.activeElement)) this.restoreRange()
         this.dismissFormPop(pop)
     }
 

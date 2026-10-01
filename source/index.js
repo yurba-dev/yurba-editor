@@ -1,5 +1,6 @@
-import { DEFAULT_CONTEXT_MENU, DEFAULT_TOOLBAR, EMBED_HOSTS } from './helpers/constants.js'
+import { BLOCK_SEL, DEFAULT_CONTEXT_MENU, DEFAULT_TOOLBAR, EMBED_HOSTS } from './helpers/constants.js'
 import { cleanHtml, flattenInline } from './helpers/sanitizer.js'
+import { normalizePaste, pastedUrl } from './helpers/paste.js'
 import { clipHtml, cpBack, cpForward, cpLen, exec } from './helpers/utils.js'
 import { withPopup } from './mixins/popup.js'
 import { withContext } from './mixins/context.js'
@@ -11,10 +12,14 @@ import { withPrompt } from './mixins/prompt.js'
 import { withFind } from './mixins/find.js'
 import { withMedia } from './mixins/media.js'
 import { withTables } from './mixins/tables.js'
+import { withTableBar } from './mixins/tablebar.js'
+import { withTabKey } from './mixins/tabkey.js'
 import { withMenus } from './mixins/menus.js'
 import { withView } from './mixins/view.js'
 import { withShortcuts } from './mixins/shortcuts.js'
 import { withWiring } from './mixins/wiring.js'
+import { withLinks } from './mixins/links.js'
+import { withSlash } from './mixins/slash.js'
 import { withYurbaUI } from './mixins/yurbaui.js'
 
 function mix (Base, ...mixins) {
@@ -22,7 +27,7 @@ function mix (Base, ...mixins) {
 }
 
 // YurbaUI last, so its popups override the standalone ones
-const mixins = [withPopup, withToolbar, withHistory, withSelection, withCommands, withPrompt, withFind, withMedia, withTables, withMenus, withContext, withView, withShortcuts, withWiring]
+const mixins = [withPopup, withToolbar, withHistory, withSelection, withCommands, withPrompt, withFind, withMedia, withTables, withMenus, withContext, withView, withShortcuts, withWiring, withTabKey, withTableBar, withLinks, withSlash]
 if (YE_UI) mixins.push(withYurbaUI)
 
 class YurbaEditor extends mix(HTMLElement, ...mixins) {
@@ -58,9 +63,12 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
     disconnectedCallback () {
         if (!this.yeReady || this.yeDestroyed) return
         this.listenGlobal(false)
-        this.hideTableCtx(); this.closeTextMenu(); this.hideFormPop(); this.hideFindPop(); this.deselectImage(); this.closeMenus()
+        this.hideTableCtx(); this.closeTextMenu(); this.hideFormPop(); this.hideFindPop(); this.deselectImage(); this.closeMenus(); this.closeSlash()
         // The body-level handle would keep a dropped editor alive
         if (this.imgHandle) { this.imgHandle.remove(); this.imgHandle = null }
+        if (this.imgGuide) { this.imgGuide.remove(); this.imgGuide = null }
+        if (this.imgBar) { this.imgBar.remove(); this.imgBar = null }
+        if (this.imgBadge) { this.imgBadge.remove(); this.imgBadge = null }
         if (this.clearLongPress) this.clearLongPress()
         if (this.root.classList.contains('ye--full')) this.toggleFull()
     }
@@ -82,6 +90,13 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
         this.maxImageKb = options.maxImageKb || 0
         this.maxChars = options.maxChars || 0
         this.uploadEnabled = !!(this.uploadUrl || this.onImageUpload)
+        // More ways to get a picture, each { label, pick } where pick() gives an address or a list of them
+        this.imageSources = Array.isArray(options.imageSources) ? options.imageSources.filter(s => s && typeof s.pick == 'function' && s.label) : []
+        // A host that keeps only its own pictures turns off "By URL" and says which addresses stay
+        this.imageUrl = options.imageUrl !== false
+        this.imageAllowed = typeof options.imageAllowed == 'function' ? options.imageAllowed : null
+        // A host that shows captions instead turns alt text off
+        this.imageAlt = options.imageAlt !== false
         this.inline = options.inline === true || options.blocks === false
         this.allowData = options.allowData === true
         this.allowClasses = options.allowClasses === true
@@ -181,12 +196,19 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
 
     setHTML (html) {
         this.deselectImage()
+        this.flushHistory()
+        // Before any edit it is the text being loaded: Ctrl+Z must not take it back to empty.
+        // Later it is a change like others, one step back
+        const loading = this.histIndex <= 0
         this.area.innerHTML = this.clean(html)
         if (this.root.classList.contains('ye--source')) {
             this.sourceView.value = this.area.innerHTML
             this.sourceView.dispatchEvent(new Event('input'))
         }
         this.sync()
+        if (loading) { this.history = []; this.histIndex = -1 }
+        this.recordState()
+        this.updateStates()
         return this
     }
 
@@ -208,11 +230,14 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
         if (!this.yeReady) { this.yeDestroyed = true; this.remove(); return }
         if (this.histTimer) { clearTimeout(this.histTimer); this.histTimer = null }
         if (this.clearLongPress) this.clearLongPress()
-        this.hideTableCtx(); this.closeTextMenu(); this.hideFormPop(); this.hideFindPop(); this.closeMenus()
+        this.hideTableCtx(); this.closeTextMenu(); this.hideFormPop(); this.hideFindPop(); this.closeMenus(); this.closeSlash()
         if (this.root.classList.contains('ye--full')) this.toggleFull()
         this.listenGlobal(false)
         this.yeDestroyed = true
         if (this.imgHandle) this.imgHandle.remove()
+        if (this.imgGuide) this.imgGuide.remove()
+        if (this.imgBar) this.imgBar.remove()
+        if (this.imgBadge) this.imgBadge.remove()
         ;(this.menuPops || []).forEach(p => p.remove())
         this.root.remove()
         if (this.input) this.input.style.display = ''
@@ -220,7 +245,11 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
 
     sync () {
         if (this.root.classList.contains('ye--source')) return
+        // A picture taken out with Delete or Backspace leaves its bar and handle over nothing
+        if (this.selectedImg && !this.area.contains(this.selectedImg)) this.deselectImage()
         const html = this.getHTML()
+        // Cleared text keeps an empty <p><br></p>, which :empty no longer matches
+        this.area.classList.toggle('is-empty', html == '')
         if (this.input) this.input.value = html
         if (typeof this.options.onChange == 'function') this.options.onChange(html)
         this.emit('change', html)
@@ -238,7 +267,15 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
     }
 
     getCount () {
-        const text = this.area.textContent.replace(/\s+/g, ' ').trim()
+        // Blocks and line breaks part words, as they do on screen: textContent runs them together
+        const parts = []
+        const walker = document.createTreeWalker(this.area, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null)
+        let n
+        while ((n = walker.nextNode())) {
+            if (n.nodeType == 3) parts.push(n.nodeValue)
+            else if (n.tagName == 'BR' || n.matches(BLOCK_SEL)) parts.push(' ')
+        }
+        const text = parts.join('').replace(/\s+/g, ' ').trim()
         return { words: text == '' ? 0 : text.split(' ').length, chars: this.countChars() }
     }
 
@@ -264,16 +301,36 @@ class YurbaEditor extends mix(HTMLElement, ...mixins) {
     }
 
     insertClipboard (html, text) {
+        // A paste is one step of the history, apart from the typing before it
+        this.flushHistory()
+        if (this.linkPastedUrl(html, text)) { this.recordState(); return }
         const room = this.roomLeft()
         if (room <= 0) return
-        if (html) {
-            const clean = this.clean(html, true, { stripStyle: !this.showToolbar })
+        let clean = html ? this.clean(normalizePaste(html), true, { stripStyle: !this.showToolbar }) : ''
+        // Nothing left of the HTML (an emoji drawn as a picture, say): its plain text still is
+        if (text && clean.replace(/<br\s*\/?>/gi, '').trim() == '') clean = ''
+        if (clean) {
             exec('insertHTML', room == Infinity ? clean : clipHtml(clean, room, this.glyphClass))
         } else if (text) {
             exec('insertText', room == Infinity ? text : text.slice(0, cpForward(text, 0, room)))
         }
         this.enforceLimit()
         this.sync()
+        this.recordState()
+    }
+
+    // An address pasted over selected words links them, as in docs apps, instead of replacing them
+    linkPastedUrl (html, text) {
+        if (this.inline || !this.offers('ye-link', 'link')) return false
+        const sel = window.getSelection()
+        if (sel == null || sel.rangeCount == 0 || sel.isCollapsed || !this.area.contains(sel.getRangeAt(0).commonAncestorContainer)) return false
+        if (sel.toString().trim() == '') return false
+        const url = pastedUrl(html, text)
+        if (url == null) return false
+        exec('createLink', url)
+        this.sync()
+        this.updateStates()
+        return true
     }
 
     updateCount (counted) {

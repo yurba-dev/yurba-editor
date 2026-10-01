@@ -378,7 +378,8 @@ svg.ye-ico {
 
 /* Prompt */
 
-.ye-formpop {
+/* Doubled to outrank .ye-popup, which the build puts after this file */
+.ye-formpop.ye-formpop {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -485,7 +486,7 @@ svg.ye-ico {
 
 /* Find */
 
-.ye-findpop {
+.ye-findpop.ye-findpop {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -552,6 +553,103 @@ svg.ye-ico {
 ::highlight(ye-find-current) {
     background: var(--ye-accent);
     color: var(--ye-on-accent);
+}
+
+/* Links */
+
+.ye-linkpop {
+    width: 380px;
+    max-width: 92vw;
+}
+
+.ye-suggest {
+    width: 320px;
+    max-width: 92vw;
+}
+
+.ye-picklist {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 264px;
+    overflow-y: auto;
+}
+
+.ye-picklist:empty {
+    display: none;
+}
+
+.ye-picklist__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 40px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: var(--yurba-radius-m, 10px);
+    background: transparent;
+    color: var(--ye-text);
+    font-family: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+
+.ye-picklist__item:hover,
+.ye-picklist__item.is-active {
+    background: var(--ye-hover);
+}
+
+.ye-picklist__item--danger {
+    color: var(--ye-danger);
+}
+
+.ye-picklist__icon {
+    display: inline-flex;
+    flex: none;
+    color: var(--ye-muted);
+}
+
+.ye-picklist__item--danger .ye-picklist__icon {
+    color: inherit;
+}
+
+.ye-picklist__icon .ye-ico {
+    font-size: 20px;
+}
+
+.ye-picklist__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.ye-picklist__title,
+.ye-picklist__hint {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ye-picklist__title {
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.ye-picklist__hint {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--ye-muted);
+}
+
+.ye-picklist__empty {
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ye-muted);
 }
 
 /* Grid */
@@ -669,6 +767,104 @@ svg.ye-ico {
     background: var(--ye-border);
 }
 
+/* Bar over the table */
+
+.ye-tablebar {
+    position: fixed;
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    gap: 2px;
+    box-sizing: border-box;
+    max-width: calc(100vw - 16px);
+    padding: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border: 1px solid var(--ye-border);
+    border-radius: var(--yurba-radius-l, 14px);
+    background: var(--ye-surface);
+    color: var(--ye-text-soft);
+    box-shadow: var(--ye-shadow);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.ye-tablebar::-webkit-scrollbar {
+    display: none;
+}
+
+.ye-tablebar__sep {
+    flex: none;
+    width: 1px;
+    height: 20px;
+    margin: 0 2px;
+    background: var(--ye-border);
+}
+
+.ye-tablebar__btn {
+    flex: none;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--yurba-radius-pill, 100px);
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.ye-tablebar__btn .ye-ico {
+    font-size: 20px;
+}
+
+.ye-tablebar__btn:hover {
+    background: var(--ye-hover);
+    color: var(--ye-text);
+}
+
+.ye-tablebar__btn.is-active {
+    background: var(--ye-accent-soft);
+    color: var(--ye-accent-ink);
+}
+
+.ye-tablebar__btn--danger {
+    color: var(--ye-danger);
+}
+
+.ye-tablebar__btn--danger:hover {
+    background: rgb(220 38 38 / 8%);
+    background: color-mix(in srgb, var(--ye-danger) 8%, transparent);
+    color: var(--ye-danger);
+}
+
+.ye-tablebar__btn[aria-disabled="true"] {
+    opacity: .35;
+    cursor: default;
+}
+
+.ye-tablebar__btn[aria-disabled="true"]:hover {
+    background: transparent;
+}
+
+/* A finger needs a taller target; the row stays one line on a phone and scrolls where it still does not fit */
+@media (pointer: coarse) {
+    .ye-tablebar {
+        gap: 0;
+    }
+
+    .ye-tablebar__btn {
+        height: 36px;
+    }
+}
+
 /* Area */
 
 .ye-body {
@@ -685,8 +881,12 @@ svg.ye-ico {
     max-height: 250px;
 }
 
-.ye-area:empty::before {
+/* Out of the flow, so an empty paragraph left after clearing stays on the same line as the hint */
+.ye-area:empty::before,
+.ye-area.is-empty::before {
     content: attr(data-placeholder);
+    float: left;
+    height: 0;
     color: var(--ye-muted);
     pointer-events: none;
     user-select: none;
@@ -788,12 +988,196 @@ svg.ye-ico {
     box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
     cursor: nwse-resize;
     display: none;
+    touch-action: none;
     transition: transform .15s ease;
+}
+
+/* A finger needs more to hold */
+@media (pointer: coarse) {
+    .ye-img-handle {
+        width: 20px;
+        height: 20px;
+    }
 }
 
 .ye-img-handle:hover,
 .ye-img-handle:active {
     transform: scale(1.25);
+}
+
+/* What a resized picture lines up with */
+.ye-area .ye-img--snap {
+    outline: 2px dashed var(--ye-accent);
+    outline-offset: 2px;
+}
+
+.ye-img-guide {
+    position: fixed;
+    z-index: 9998;
+    display: none;
+    border-radius: 1px;
+    background: var(--ye-accent);
+    pointer-events: none;
+}
+
+.ye-img-badge {
+    position: fixed;
+    z-index: 9999;
+    display: none;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--ye-text);
+    color: var(--ye-surface);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+.ye-img-badge--snap {
+    background: var(--ye-accent);
+    color: var(--ye-on-accent);
+}
+
+/* Image bar */
+
+.ye-imgbar {
+    position: fixed;
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    gap: 2px;
+    max-width: calc(100vw - 16px);
+    padding: 4px;
+    overflow-x: auto;
+    border: 1px solid var(--ye-border);
+    border-radius: 10px;
+    background: var(--ye-surface);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 14%);
+    scrollbar-width: none;
+}
+
+.ye-imgbar::-webkit-scrollbar {
+    display: none;
+}
+
+.ye-imgbar__btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--ye-text);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ye-imgbar__btn--text {
+    padding: 0 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ye-imgbar__btn:hover {
+    background: var(--ye-hover);
+}
+
+.ye-imgbar__btn--on,
+.ye-imgbar__btn--on:hover {
+    background: var(--ye-accent-soft);
+    color: var(--ye-accent-ink);
+}
+
+.ye-imgbar__btn--danger {
+    color: var(--ye-danger);
+}
+
+.ye-imgbar__btn .ye-ico {
+    font-size: 20px;
+}
+
+.ye-imgbar__sep {
+    flex-shrink: 0;
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: var(--ye-border);
+}
+
+/* The sizes in the standalone right-click menu */
+.ye-tableops__sizes {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 2px 6px;
+}
+
+.ye-tableops .ye-tableops__sizes button {
+    min-height: 30px;
+    padding: 6px 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A finger needs more to hold */
+@media (pointer: coarse) {
+    .ye-imgbar__btn {
+        min-width: 38px;
+        height: 38px;
+    }
+}
+
+/* A captioned picture: the figure takes the size and float, the picture fills it */
+.ye-area figure {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: .7em auto;
+}
+
+.ye-area figure[style*="float: left"] {
+    margin: .2em 1em .5em 0;
+}
+
+.ye-area figure[style*="float: right"] {
+    margin: .2em 0 .5em 1em;
+}
+
+/* Figures one after another share a line, as pictures do */
+.ye-area figure:has(+ figure),
+.ye-area figure + figure {
+    display: inline-block;
+    vertical-align: top;
+    margin: .7em 0;
+}
+
+.ye-area figure img {
+    display: block;
+    width: 100%;
+    margin: 0;
+}
+
+.ye-area figcaption {
+    padding-top: 6px;
+    font-size: .88em;
+    line-height: 1.4;
+    color: var(--ye-text-soft);
+    text-align: center;
+}
+
+.ye-area figcaption:has(> br:only-child)::before {
+    content: var(--ye-caption-hint, "");
+    float: left;
+    width: 100%;
+    height: 0;
+    color: var(--ye-muted);
+    pointer-events: none;
 }
 
 .ye-area iframe {
@@ -933,13 +1317,18 @@ svg.ye-ico {
     background: var(--ye-accent-soft);
 }
 
-.ye.ye--busy .ye-area {
-    opacity: .6;
-    pointer-events: none;
-}
-
 .ye.ye--busy .ye-count {
     color: var(--ye-accent);
+}
+
+/* A picture still on its way: shown at once, the text stays open to write in */
+.ye-area img.ye-img--uploading {
+    animation: ye-uploading 1.2s ease-in-out infinite;
+}
+
+@keyframes ye-uploading {
+    0%, 100% { opacity: .35; }
+    50% { opacity: .7; }
 }
 
 .ye.ye--full {
@@ -950,8 +1339,21 @@ svg.ye-ico {
     max-height: none;
 }
 
+/* The text fills the screen and scrolls itself: the page under it is locked */
+.ye.ye--full .ye-body {
+    display: flex;
+    flex-direction: column;
+}
+
 .ye.ye--full .ye-area {
+    flex: 1;
+    min-height: 0;
     max-height: none;
+}
+
+.ye.ye--full .ye-source-view:not([hidden]) {
+    flex: 1;
+    resize: none;
 }
 
 body.ye-lock {
@@ -962,6 +1364,7 @@ body.ye-lock {
 
 .ye-popup {
     position: fixed;
+    box-sizing: border-box;
     min-width: 180px;
     padding: 6px;
     background: var(--y-win-bg, var(--ye-surface));
@@ -976,12 +1379,107 @@ body.ye-lock {
     transition: opacity .2s cubic-bezier(.05, .7, .1, 1), transform .2s cubic-bezier(.05, .7, .1, 1);
 }
 
+/* Popups live in <body>, outside the .ye rule that sets it for the editor */
+.ye-popup * {
+    box-sizing: border-box;
+}
+
+/* A menu grown past the screen by a submenu opened in place scrolls; a side submenu needs no clipping */
+.ye-popup.ye-popup--scroll {
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
 .ye-popup.is-hidden {
     opacity: 0;
     transform: scale(.96);
     pointer-events: none;
     transition-duration: .15s;
     transition-timing-function: ease;
+}
+
+/* Slash menu */
+
+.ye-slash {
+    box-sizing: border-box;
+    min-width: 240px;
+    max-height: 320px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.ye-slash.is-empty {
+    display: none;
+}
+
+.ye-slash__item {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 36px;
+    padding: 8px 12px;
+    border-radius: var(--yurba-radius-m, 10px);
+    color: var(--y-win-text, var(--ye-text));
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ye-slash__item.is-active {
+    background: var(--y-win-action-bg, var(--ye-hover));
+}
+
+.ye-slash__item .ye-ico {
+    flex: none;
+    font-size: 20px;
+    opacity: .7;
+}
+
+.ye-slash__item.is-active .ye-ico {
+    color: var(--ye-accent);
+    opacity: 1;
+}
+
+.ye-slash__label {
+    flex: 1;
+}
+
+.ye-slash__hint,
+.ye-menu__hint {
+    color: var(--ye-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+/* Shortcut hints of the paragraph style menu */
+
+.ye-menu__hint {
+    margin-left: auto;
+    padding-left: 16px;
+    font-family: inherit;
+}
+
+.ye-menu__item--hinted .y-dropdown__item-label {
+    display: flex;
+    align-items: center;
+}
+
+/* No keyboard shortcuts on a touch screen */
+
+@media (hover: none) {
+    .ye-menu__hint {
+        display: none;
+    }
 }
 
 /* Dropdown */
